@@ -26,12 +26,38 @@ html, body, #root {
   color: var(--text);
 }
 
-/* Cesium 기본 UI 숨기기 */
-.cesium-viewer-toolbar,
-.cesium-viewer-animationContainer,
-.cesium-viewer-timelineContainer,
-.cesium-viewer-bottom,
-.cesium-viewer-fullscreenContainer,
-.cesium-credit-container {
-  display: none !important;
+/* 웨이포인트 마커 펄스 애니메이션 */
+.wp-marker {
+  animation: wpPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes wpPulse {
+  0%,100% { transform: scale(1);   opacity: 1;    }
+  50%      { transform: scale(1.3); opacity: 0.80; }
+}
+
+/* Mapbox 팝업 기본 스타일 재설정 */
+.mapboxgl-popup-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.mapboxgl-popup-tip { display: none !important; }
+
+/* Mapbox 컨트롤 위치 */
+.mapboxgl-ctrl-top-right {
+  top: 16px !important;
+  right: 16px !important;
+}
+.mapboxgl-ctrl-group {
+  background: rgba(8, 14, 28, 0.75) !important;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(6px) !important;
+}
+.mapboxgl-ctrl-group button {
+  background: transparent !important;
+}
+.mapboxgl-ctrl-group button .mapboxgl-ctrl-icon {
+  filter: invert(1) !important;
 }

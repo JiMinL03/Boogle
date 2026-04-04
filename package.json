@@ -10,13 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "cesium": "^1.111.0",
+    "d3-geo": "^3.1.1",
+    "mapbox-gl": "^3.21.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "three": "^0.183.2",
+    "topojson-client": "^3.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.0",
-    "vite-plugin-cesium": "^1.2.23"
+    "vite": "^5.4.0"
   }
 }

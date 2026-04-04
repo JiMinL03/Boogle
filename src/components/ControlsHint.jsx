@@ -1,10 +1,10 @@
 import styles from './ControlsHint.module.css'
 
 const HINTS = [
-  { key: '드래그',       desc: '지구 회전', cls: 'orange' },
-  { key: '우클릭 드래그', desc: '시점 이동', cls: 'blue'   },
-  { key: '스크롤',       desc: '줌',       cls: 'teal'   },
-  { key: 'Ctrl + 드래그', desc: '기울기',   cls: 'yellow' },
+  { key: '드래그',        desc: '지구 이동',    cls: 'orange' },
+  { key: '우클릭 드래그', desc: '회전 · 기울기', cls: 'blue'   },
+  { key: '스크롤',        desc: '줌',           cls: 'teal'   },
+  { key: '마커 클릭',     desc: '해로 정보',    cls: 'yellow' },
 ]
 
 export default function ControlsHint() {

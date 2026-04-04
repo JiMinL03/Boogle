@@ -1,176 +1,348 @@
 import { useEffect, useRef } from 'react'
-import * as Cesium from 'cesium'
-import 'cesium/Build/Cesium/Widgets/widgets.css'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import { feature } from 'topojson-client'
+import { geoContains } from 'd3-geo'
 import { WAYPOINTS } from '../data/waypoints'
-import { COLOR, CESIUM_TOKEN } from '../constants/colors'
+import { COLOR, MAPBOX_TOKEN } from '../constants/colors'
 
-function makeIcon(type) {
-  const S = 128
-  const cx = S / 2
+// ── 선박 상공(탑뷰) 아이콘 Canvas 생성 ──────────────────
+function makeShipCanvas() {
+  const W = 56, H = 128
   const canvas = document.createElement('canvas')
-  canvas.width = S
-  canvas.height = S
+  canvas.width = W; canvas.height = H
   const ctx = canvas.getContext('2d')
-  const [r, g, b] = COLOR[type].rgb
-  const hex = COLOR[type].hex
+  const cx = W / 2
 
-  ctx.shadowColor = hex
-  ctx.shadowBlur = 28
+  ctx.shadowColor = '#44aadd'
+  ctx.shadowBlur  = 18
+
+  // 선체
   ctx.beginPath()
-  ctx.arc(cx, cx, 46, 0, Math.PI * 2)
-  ctx.strokeStyle = `rgba(${r},${g},${b},0.18)`
-  ctx.lineWidth = 6
+  ctx.moveTo(cx, 4)
+  ctx.bezierCurveTo(cx + 20, 14, cx + 22, 32, cx + 22, 62)
+  ctx.lineTo(cx + 20, 108)
+  ctx.bezierCurveTo(cx + 12, 118, cx, 122, cx, 122)
+  ctx.bezierCurveTo(cx - 12, 118, cx - 20, 108, cx - 20, 108)
+  ctx.lineTo(cx - 22, 62)
+  ctx.bezierCurveTo(cx - 22, 32, cx - 20, 14, cx, 4)
+  ctx.closePath()
+  ctx.fillStyle = '#192838'
+  ctx.fill()
+  ctx.shadowBlur  = 0
+  ctx.strokeStyle = '#4499cc'
+  ctx.lineWidth   = 1.5
   ctx.stroke()
 
-  ctx.shadowBlur = 20
-  ctx.beginPath()
-  ctx.arc(cx, cx, 30, 0, Math.PI * 2)
-  ctx.strokeStyle = `rgba(${r},${g},${b},0.45)`
-  ctx.lineWidth = 3
-  ctx.stroke()
+  // LNG 탱크 5개 (탑뷰 원형)
+  ;[20, 40, 60, 80, 100].forEach(ty => {
+    ctx.beginPath()
+    ctx.arc(cx, ty, 12, 0, Math.PI * 2)
+    ctx.fillStyle = '#ccd8e0'
+    ctx.fill()
+    ctx.strokeStyle = '#7a8fa0'
+    ctx.lineWidth   = 0.8
+    ctx.stroke()
+    // 하이라이트
+    ctx.beginPath()
+    ctx.arc(cx - 2, ty - 2, 4, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(255,255,255,0.38)'
+    ctx.fill()
+  })
 
-  ctx.shadowBlur = 24
+  // 선수 표시 (빨간 점)
   ctx.beginPath()
-  ctx.arc(cx, cx, 18, 0, Math.PI * 2)
-  ctx.fillStyle = `rgba(${r},${g},${b},0.30)`
+  ctx.arc(cx, 6, 3.5, 0, Math.PI * 2)
+  ctx.fillStyle   = '#ff4422'
+  ctx.shadowColor = '#ff4422'
+  ctx.shadowBlur  = 8
+  ctx.fill()
+  ctx.shadowBlur  = 0
+
+  // 선교
+  ctx.fillStyle = '#dde8f0'
+  ctx.beginPath()
+  ctx.roundRect(cx - 9, 110, 18, 10, 3)
   ctx.fill()
 
-  ctx.shadowBlur = 16
-  ctx.beginPath()
-  ctx.arc(cx, cx, 12, 0, Math.PI * 2)
-  ctx.fillStyle = hex
-  ctx.fill()
-
-  ctx.shadowBlur = 0
-  ctx.beginPath()
-  ctx.arc(cx, cx, 5, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(255,255,255,0.95)'
-  ctx.fill()
-
-  return canvas.toDataURL()
+  return canvas
 }
 
-export default function Globe({ onCoordsChange }) {
+// ── 방위각 계산 (북쪽=0, 시계방향 도(°)) ────────────────
+function calcBearingDeg(lon1, lat1, lon2, lat2) {
+  const φ1 = lat1 * Math.PI / 180
+  const φ2 = lat2 * Math.PI / 180
+  const Δλ = (lon2 - lon1) * Math.PI / 180
+  const y   = Math.sin(Δλ) * Math.cos(φ2)
+  const x   = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ)
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360
+}
+
+// ── Globe 컴포넌트 ────────────────────────────────────────
+export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
   const containerRef = useRef(null)
-  const viewerRef = useRef(null)
+  const mapRef       = useRef(null)
+  const landRef      = useRef(null)
 
+  // 콜백 ref (map.on('load') 내부 클로저에서 최신 함수 참조 유지)
+  const coordsCbRef   = useRef(onCoordsChange)
+  const shipMoveCbRef = useRef(onShipMove)
+  const landWarnCbRef = useRef(onLandWarning)
+  useEffect(() => { coordsCbRef.current   = onCoordsChange }, [onCoordsChange])
+  useEffect(() => { shipMoveCbRef.current = onShipMove     }, [onShipMove])
+  useEffect(() => { landWarnCbRef.current = onLandWarning  }, [onLandWarning])
+
+  // 육지 데이터 로드
   useEffect(() => {
-    if (viewerRef.current) return // strict mode 이중 실행 방지
+    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+      .then(r => r.json())
+      .then(world => { landRef.current = feature(world, world.objects.land) })
+      .catch(() => {})
+  }, [])
 
-    Cesium.Ion.defaultAccessToken = CESIUM_TOKEN
+  // Mapbox 초기화 (한 번만)
+  useEffect(() => {
+    if (mapRef.current) return
 
-    const viewer = new Cesium.Viewer(containerRef.current, {
-      terrain: Cesium.Terrain.fromWorldTerrain(),
-      baseLayerPicker: false,
-      geocoder: false,
-      homeButton: false,
-      sceneModePicker: false,
-      navigationHelpButton: false,
-      animation: false,
-      timeline: false,
-      fullscreenButton: false,
-      infoBox: false,
-      selectionIndicator: false,
-      skyAtmosphere: new Cesium.SkyAtmosphere(),
+    mapboxgl.accessToken = MAPBOX_TOKEN
+
+    const map = new mapboxgl.Map({
+      container:  containerRef.current,
+      style:      'mapbox://styles/mapbox/streets-v12',
+      center:     [130, 30],
+      zoom:       2.8,
+      projection: { name: 'globe' },
+      antialias:  true,
     })
-    viewerRef.current = viewer
+    mapRef.current = map
 
-    // 시계 애니메이션 정지 (조명 자동 회전 방지)
-    viewer.clock.shouldAnimate = false
+    // 선박 상태 (ref 불필요 - Mapbox 루프 클로저에서만 접근)
+    const ship   = { lon: 130, lat: 30 }
+    const target = { lon: 130, lat: 30 }
+    let   heading = 0
+    const wake    = [[130, 30]]
+    let   rafId
 
-    // 조작 매핑
-    const ctrl = viewer.scene.screenSpaceCameraController
-    ctrl.rotateEventTypes    = Cesium.CameraEventType.LEFT_DRAG
-    ctrl.translateEventTypes = Cesium.CameraEventType.RIGHT_DRAG
-    ctrl.tiltEventTypes      = [
-      Cesium.CameraEventType.MIDDLE_DRAG,
-      { eventType: Cesium.CameraEventType.LEFT_DRAG, modifier: Cesium.KeyboardEventModifier.CTRL },
-    ]
-    ctrl.zoomEventTypes = [Cesium.CameraEventType.WHEEL, Cesium.CameraEventType.PINCH]
+    map.on('load', () => {
+      // ── 대기 + 우주 (스크린샷처럼 흰 대기광) ────────────
+      map.setFog({
+        color:            'rgb(255, 255, 255)',     // 지평선 흰 빛
+        'high-color':     'rgb(180, 215, 255)',     // 상단 하늘색
+        'horizon-blend':  0.08,
+        'space-color':    'rgb(8, 11, 26)',         // 우주 어두운 남색
+        'star-intensity': 0.80,
+      })
 
-    // 지구 스타일
-    viewer.scene.globe.enableLighting = true
-    viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#020C16')
-    viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#111114')
-    viewer.scene.fog.enabled = true
-    viewer.scene.fog.density = 0.00015
+      // ── 선박 아이콘 등록 (ImageData로 변환 → v3 호환) ───
+      const shipCanvas = makeShipCanvas()
+      const shipCtx    = shipCanvas.getContext('2d')
+      const imgData    = shipCtx.getImageData(0, 0, shipCanvas.width, shipCanvas.height)
+      map.addImage('ship-icon', {
+        width:  shipCanvas.width,
+        height: shipCanvas.height,
+        data:   imgData.data,
+      })
 
-    // 초기 카메라
-    viewer.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(50, 20, 18000000),
-      orientation: { heading: 0, pitch: -Cesium.Math.PI_OVER_TWO, roll: 0 },
-    })
-
-    // 마커 아이콘
-    const icons = {
-      canal:  makeIcon('canal'),
-      strait: makeIcon('strait'),
-      cape:   makeIcon('cape'),
-    }
-
-    // 마커 추가
-    WAYPOINTS.forEach((wp, i) => {
-      const col = Cesium.Color.fromCssColorString(COLOR[wp.type].hex)
-      const phase = (i / WAYPOINTS.length) * Math.PI * 2
-
-      viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(wp.lon, wp.lat),
-        billboard: {
-          image: icons[wp.type],
-          width: 56,
-          height: 56,
-          verticalOrigin: Cesium.VerticalOrigin.CENTER,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          scale: new Cesium.CallbackProperty(
-            () => 0.85 + 0.15 * Math.sin(Date.now() * 0.002 + phase),
-            false
-          ),
-          scaleByDistance: new Cesium.NearFarScalar(5e5, 1.2, 2e7, 0.65),
-        },
-        label: {
-          text: wp.name_ko,
-          font: 'bold 13px Inter, Noto Sans KR, sans-serif',
-          fillColor: col,
-          outlineColor: Cesium.Color.fromCssColorString('#0a0a0d'),
-          outlineWidth: 4,
-          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          pixelOffset: new Cesium.Cartesian2(0, -34),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          scaleByDistance: new Cesium.NearFarScalar(5e5, 1.1, 2e7, 0.7),
-          showBackground: true,
-          backgroundColor: Cesium.Color.fromCssColorString('rgba(10,10,13,0.82)'),
-          backgroundPadding: new Cesium.Cartesian2(8, 5),
+      // ── 소스 등록 ────────────────────────────────────────
+      map.addSource('ship', {
+        type: 'geojson',
+        data: {
+          type:       'Feature',
+          geometry:   { type: 'Point', coordinates: [ship.lon, ship.lat] },
+          properties: { bearing: 0 },
         },
       })
+
+      map.addSource('wake', {
+        type: 'geojson',
+        data: {
+          type:       'Feature',
+          geometry:   { type: 'LineString', coordinates: [[ship.lon, ship.lat]] },
+          properties: {},
+        },
+      })
+
+      // ── 항적 레이어 (글로우 + 코어) ──────────────────────
+      map.addLayer({
+        id:     'wake-glow',
+        type:   'line',
+        source: 'wake',
+        paint: {
+          'line-color':   '#33aadd',
+          'line-width':   10,
+          'line-opacity': 0.12,
+          'line-blur':    8,
+        },
+      })
+      map.addLayer({
+        id:     'wake-line',
+        type:   'line',
+        source: 'wake',
+        paint: {
+          'line-color':   '#44ccee',
+          'line-width':   1.8,
+          'line-opacity': 0.55,
+        },
+      })
+
+      // ── 선박 심볼 레이어 ──────────────────────────────────
+      map.addLayer({
+        id:     'ship-layer',
+        type:   'symbol',
+        source: 'ship',
+        layout: {
+          'icon-image':              'ship-icon',
+          'icon-size': ['interpolate', ['linear'], ['zoom'],
+            1, 0.18,
+            4, 0.42,
+            8, 0.72,
+          ],
+          'icon-rotate':              ['get', 'bearing'],
+          'icon-rotation-alignment': 'map',      // 지도 기준 회전 (북쪽=0)
+          'icon-pitch-alignment':    'viewport',  // 화면 정면 유지
+          'icon-allow-overlap':       true,
+          'icon-ignore-placement':    true,
+        },
+      })
+
+      // ── 해로 웨이포인트 마커 (항상 라벨 표시) ───────────
+      WAYPOINTS.forEach(wp => {
+        // 마커 컨테이너
+        const el = document.createElement('div')
+        el.style.cssText = `
+          display: flex; flex-direction: column; align-items: center;
+          gap: 4px; cursor: pointer; pointer-events: auto;
+        `
+
+        // 글로우 도트
+        const dot = document.createElement('div')
+        dot.className = 'wp-marker'
+        dot.style.cssText = `
+          width: 14px; height: 14px; border-radius: 50%;
+          background: ${COLOR[wp.type].hex};
+          box-shadow:
+            0 0 0 3px ${COLOR[wp.type].hex}55,
+            0 0 10px ${COLOR[wp.type].hex}bb,
+            0 0 20px ${COLOR[wp.type].hex}44;
+        `
+
+        // 한국어 라벨 (항상 표시)
+        const label = document.createElement('div')
+        label.textContent = wp.name_ko
+        label.style.cssText = `
+          font-size: 11px; font-weight: 700; white-space: nowrap;
+          color: ${COLOR[wp.type].hex};
+          text-shadow:
+            0 1px 4px rgba(255,255,255,0.9),
+            0 1px 4px rgba(255,255,255,0.9),
+            0 0 8px rgba(255,255,255,0.8);
+          font-family: Inter, 'Noto Sans KR', sans-serif;
+          letter-spacing: 0.02em;
+        `
+
+        el.appendChild(dot)
+        el.appendChild(label)
+
+        // 클릭 시 팝업 (영문명 + 좌표)
+        const popup = new mapboxgl.Popup({
+          offset:      20,
+          closeButton: false,
+          className:   'wp-popup',
+        }).setHTML(`
+          <div style="
+            background:rgba(8,14,24,0.95);
+            border:1px solid ${COLOR[wp.type].hex}55;
+            border-radius:9px; padding:9px 14px;
+            font-family:Inter,'Noto Sans KR',sans-serif;
+          ">
+            <div style="color:${COLOR[wp.type].hex};font-weight:700;font-size:13px;">
+              ${wp.name_ko}
+            </div>
+            <div style="color:rgba(180,210,240,0.65);font-size:11px;margin-top:3px;">
+              ${wp.name}
+            </div>
+            <div style="color:rgba(140,170,200,0.45);font-size:10px;margin-top:4px;">
+              ${wp.lat.toFixed(2)}°, ${wp.lon.toFixed(2)}°
+            </div>
+          </div>
+        `)
+
+        new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([wp.lon, wp.lat])
+          .setPopup(popup)
+          .addTo(map)
+      })
+
+      // ── 마우스 이동: 육지 감지 + 선박 목표 갱신 ─────────
+      map.on('mousemove', e => {
+        const { lng, lat } = e.lngLat
+        const isLand = landRef.current
+          ? geoContains(landRef.current, [lng, lat])
+          : false
+
+        if (isLand) {
+          landWarnCbRef.current?.(true)
+        } else {
+          target.lon = lng
+          target.lat = lat
+          landWarnCbRef.current?.(false)
+        }
+        coordsCbRef.current?.({ lat: lat.toFixed(3), lon: lng.toFixed(3) })
+      })
+
+      map.on('mouseleave', () => {
+        landWarnCbRef.current?.(false)
+        coordsCbRef.current?.(null)
+      })
+
+      // ── 애니메이션 루프: 선박 부드러운 이동 ─────────────
+      function animate() {
+        rafId = requestAnimationFrame(animate)
+
+        const prevLon = ship.lon
+        const prevLat = ship.lat
+
+        ship.lon += (target.lon - ship.lon) * 0.1
+        ship.lat += (target.lat - ship.lat) * 0.1
+
+        const dLon = ship.lon - prevLon
+        const dLat = ship.lat - prevLat
+
+        if (Math.abs(dLon) > 1e-9 || Math.abs(dLat) > 1e-9) {
+          heading = calcBearingDeg(prevLon, prevLat, ship.lon, ship.lat)
+
+          wake.push([ship.lon, ship.lat])
+          if (wake.length > 150) wake.shift()
+
+          shipMoveCbRef.current?.(heading * Math.PI / 180) // 라디안으로 변환
+        }
+
+        // GeoJSON 소스 실시간 갱신
+        map.getSource('ship')?.setData({
+          type:       'Feature',
+          geometry:   { type: 'Point', coordinates: [ship.lon, ship.lat] },
+          properties: { bearing: heading },
+        })
+
+        if (wake.length >= 2) {
+          map.getSource('wake')?.setData({
+            type:       'Feature',
+            geometry:   { type: 'LineString', coordinates: wake },
+            properties: {},
+          })
+        }
+      }
+      animate()
     })
 
-    // 마우스 좌표 추적
-    const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
-    handler.setInputAction(e => {
-      const cart = viewer.camera.pickEllipsoid(e.endPosition)
-      if (cart) {
-        const carto = Cesium.Cartographic.fromCartesian(cart)
-        const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(2)
-        const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(2)
-        onCoordsChange({ lat, lon })
-      } else {
-        onCoordsChange(null)
-      }
-    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE)
-
     return () => {
-      if (viewerRef.current && !viewerRef.current.isDestroyed()) {
-        viewerRef.current.destroy()
-        viewerRef.current = null
+      if (rafId) cancelAnimationFrame(rafId)
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
       }
     }
-  }, [onCoordsChange])
+  }, []) // 의존성 없음 - 한 번만 실행, 콜백은 ref로 참조
 
-  return (
-    <div
-      ref={containerRef}
-      style={{ position: 'absolute', inset: 0 }}
-    />
-  )
+  return <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 }

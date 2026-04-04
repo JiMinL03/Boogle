@@ -4,4 +4,6 @@ export const COLOR = {
   cape:   { hex: '#00BFA5', rgb: [  0, 191, 165] },
 }
 
-export const CESIUM_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiOTNkMWIxYi0zZGY2LTQ4MjQtYjRiZS0yYjJjNjFiNTkxZjIiLCJpZCI6NDEyMzU5LCJpYXQiOjE3NzUwNDgwNzZ9.leZFN8RMD9W_s9esPMDp3XubJQ3o_O3DEPvC0dqoDII'
+// Mapbox 액세스 토큰
+// https://account.mapbox.com 에서 발급 후 아래에 입력하세요
+export const MAPBOX_TOKEN = 'pk.eyJ1IjoiamltaW5sZWUwMzMiLCJhIjoiY21uanBvOHV6MHFlazJwcTVlc3MybXMzdyJ9.5jbvp1Z7anhHMfpkhZicKA'
