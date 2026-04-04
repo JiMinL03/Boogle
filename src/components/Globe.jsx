@@ -155,33 +155,20 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
 
       map.addSource('wake', {
         type: 'geojson',
-        data: {
-          type:       'Feature',
-          geometry:   { type: 'LineString', coordinates: [[ship.lon, ship.lat]] },
-          properties: {},
-        },
+        data: { type: 'FeatureCollection', features: [] },
       })
 
-      // ── 항적 레이어 (글로우 + 코어) ──────────────────────
+      // ── 항적 레이어: 크기·투명도 페이드 원형 점 ──────────
       map.addLayer({
-        id:     'wake-glow',
-        type:   'line',
+        id:     'wake-dots',
+        type:   'circle',
         source: 'wake',
         paint: {
-          'line-color':   '#33aadd',
-          'line-width':   10,
-          'line-opacity': 0.12,
-          'line-blur':    8,
-        },
-      })
-      map.addLayer({
-        id:     'wake-line',
-        type:   'line',
-        source: 'wake',
-        paint: {
-          'line-color':   '#44ccee',
-          'line-width':   1.8,
-          'line-opacity': 0.55,
+          // age: 0=가장 오래됨 → 1=가장 최신
+          'circle-radius':  ['interpolate', ['linear'], ['get', 'age'], 0, 1.5, 1, 5.5],
+          'circle-color':   '#FF6600',
+          'circle-opacity': ['interpolate', ['linear'], ['get', 'age'], 0, 0.06, 1, 0.72],
+          'circle-blur':    ['interpolate', ['linear'], ['get', 'age'], 0, 1.0,  1, 0.15],
         },
       })
 
@@ -295,26 +282,56 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
         coordsCbRef.current?.(null)
       })
 
-      // ── 애니메이션 루프: 선박 부드러운 이동 ─────────────
+      // ── LNG 속도 상수 (17.5 knots, 시뮬레이션 스케일 ×25000) ──
+      // 17.5 knot × 1852 m/knot ÷ 3600 s ÷ 111320 m/deg ÷ 60fps × 25000
+      const MAX_DEG_PER_FRAME = 17.5 * 1852 / (3600 * 111320 * 60) * 25000 // ≈ 0.034 deg/frame
+
+      // ── 애니메이션 루프: LNG 속도 기반 이동 ─────────────
       function animate() {
         rafId = requestAnimationFrame(animate)
 
         const prevLon = ship.lon
         const prevLat = ship.lat
 
-        ship.lon += (target.lon - ship.lon) * 0.1
-        ship.lat += (target.lat - ship.lat) * 0.1
+        // 위도에 따른 경도 보정 (등거리 이동)
+        const cosLat  = Math.cos(ship.lat * Math.PI / 180)
+        const dLon    = target.lon - ship.lon
+        const dLat    = target.lat - ship.lat
+        const distDeg = Math.sqrt((dLon * cosLat) ** 2 + dLat ** 2)
 
-        const dLon = ship.lon - prevLon
-        const dLat = ship.lat - prevLat
+        let nextLon, nextLat
+        if (distDeg < 1e-6) {
+          nextLon = ship.lon
+          nextLat = ship.lat
+        } else if (distDeg <= MAX_DEG_PER_FRAME) {
+          nextLon = target.lon
+          nextLat = target.lat
+        } else {
+          const scale = MAX_DEG_PER_FRAME / distDeg
+          nextLon = ship.lon + dLon * scale
+          nextLat = ship.lat + dLat * scale
+        }
 
-        if (Math.abs(dLon) > 1e-9 || Math.abs(dLat) > 1e-9) {
+        // 새 위치가 육지이면 이동하지 않음
+        const nextOnLand = landRef.current
+          ? geoContains(landRef.current, [nextLon, nextLat])
+          : false
+
+        if (!nextOnLand) {
+          ship.lon = nextLon
+          ship.lat = nextLat
+        }
+
+        const moveLon = ship.lon - prevLon
+        const moveLat = ship.lat - prevLat
+
+        if (Math.abs(moveLon) > 1e-9 || Math.abs(moveLat) > 1e-9) {
           heading = calcBearingDeg(prevLon, prevLat, ship.lon, ship.lat)
 
           wake.push([ship.lon, ship.lat])
-          if (wake.length > 150) wake.shift()
+          if (wake.length > 60) wake.shift()
 
-          shipMoveCbRef.current?.(heading * Math.PI / 180) // 라디안으로 변환
+          shipMoveCbRef.current?.(heading * Math.PI / 180)
         }
 
         // GeoJSON 소스 실시간 갱신
@@ -324,11 +341,14 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
           properties: { bearing: heading },
         })
 
-        if (wake.length >= 2) {
+        if (wake.length >= 1) {
           map.getSource('wake')?.setData({
-            type:       'Feature',
-            geometry:   { type: 'LineString', coordinates: wake },
-            properties: {},
+            type: 'FeatureCollection',
+            features: wake.map((coord, i) => ({
+              type:       'Feature',
+              geometry:   { type: 'Point', coordinates: coord },
+              properties: { age: (i + 1) / wake.length },
+            })),
           })
         }
       }

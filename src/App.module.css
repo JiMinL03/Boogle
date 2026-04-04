@@ -3,18 +3,20 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(180, 30, 20, 0.85);
+  background: rgba(200, 50, 0, 0.90);
   color: #fff;
   font-size: 14px;
-  font-weight: 600;
-  padding: 10px 22px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 80, 60, 0.5);
-  backdrop-filter: blur(6px);
+  font-weight: 700;
+  padding: 12px 26px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 120, 40, 0.55);
+  border-top: 2.5px solid #FF6600;
+  backdrop-filter: blur(8px);
   pointer-events: none;
   z-index: 100;
   animation: fadeIn 0.15s ease;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 24px rgba(255,80,0,0.30);
 }
 
 @keyframes fadeIn {

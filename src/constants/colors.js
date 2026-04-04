@@ -5,5 +5,4 @@ export const COLOR = {
 }
 
 // Mapbox 액세스 토큰
-// https://account.mapbox.com 에서 발급 후 아래에 입력하세요
 export const MAPBOX_TOKEN = 'pk.eyJ1IjoiamltaW5sZWUwMzMiLCJhIjoiY21uanBvOHV6MHFlazJwcTVlc3MybXMzdyJ9.5jbvp1Z7anhHMfpkhZicKA'
