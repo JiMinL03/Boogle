@@ -1,0 +1,42 @@
+.btn {
+  position: fixed;
+  top: 235px;
+  right: 20px;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 102, 0, 0.22);
+  border-bottom: 2.5px solid var(--orange);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #CC4400;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22), 0 0 16px rgba(255, 102, 0, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  transition: background 0.18s, transform 0.12s;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: rgba(255, 102, 0, 0.10);
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.label {
+  line-height: 1;
+}

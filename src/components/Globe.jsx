@@ -79,7 +79,7 @@ function calcBearingDeg(lon1, lat1, lon2, lat2) {
 }
 
 // ── Globe 컴포넌트 ────────────────────────────────────────
-export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
+export default function Globe({ onCoordsChange, onShipMove, onLandWarning, viewMode, locateRef }) {
   const containerRef = useRef(null)
   const mapRef       = useRef(null)
   const landRef      = useRef(null)
@@ -91,6 +91,25 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
   useEffect(() => { coordsCbRef.current   = onCoordsChange }, [onCoordsChange])
   useEffect(() => { shipMoveCbRef.current = onShipMove     }, [onShipMove])
   useEffect(() => { landWarnCbRef.current = onLandWarning  }, [onLandWarning])
+
+  // 3D ↔ 2D 전환
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    if (viewMode === 'mercator') {
+      map.setProjection({ name: 'mercator' })
+      map.setFog(null)
+    } else {
+      map.setProjection({ name: 'globe' })
+      map.setFog({
+        color:            'rgb(255, 255, 255)',
+        'high-color':     'rgb(180, 215, 255)',
+        'horizon-blend':  0.08,
+        'space-color':    'rgb(8, 11, 26)',
+        'star-intensity': 0.80,
+      })
+    }
+  }, [viewMode])
 
   // 육지 데이터 로드
   useEffect(() => {
@@ -122,6 +141,14 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
     let   heading = 0
     const wake    = [[130, 30]]
     let   rafId
+    let   middleDown = false
+
+    // 선박 위치로 카메라 이동 함수 외부 노출
+    if (locateRef) {
+      locateRef.current = () => {
+        map.flyTo({ center: [ship.lon, ship.lat], zoom: 4, duration: 1400 })
+      }
+    }
 
     map.on('load', () => {
       // ── 대기 + 우주 (스크린샷처럼 흰 대기광) ────────────
@@ -154,21 +181,33 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
       })
 
       map.addSource('wake', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
+        type:        'geojson',
+        lineMetrics: true,
+        data: {
+          type:       'Feature',
+          geometry:   { type: 'LineString', coordinates: [[130, 30], [130, 30]] },
+          properties: {},
+        },
       })
 
-      // ── 항적 레이어: 크기·투명도 페이드 원형 점 ──────────
+      // ── 항적 레이어: 둥근 선형 그라데이션 ─────────────────
       map.addLayer({
-        id:     'wake-dots',
-        type:   'circle',
+        id:     'wake-line',
+        type:   'line',
         source: 'wake',
+        layout: {
+          'line-cap':  'round',
+          'line-join': 'round',
+        },
         paint: {
-          // age: 0=가장 오래됨 → 1=가장 최신
-          'circle-radius':  ['interpolate', ['linear'], ['get', 'age'], 0, 1.5, 1, 5.5],
-          'circle-color':   '#FF6600',
-          'circle-opacity': ['interpolate', ['linear'], ['get', 'age'], 0, 0.06, 1, 0.72],
-          'circle-blur':    ['interpolate', ['linear'], ['get', 'age'], 0, 1.0,  1, 0.15],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 1, 2.5, 4, 5.5, 8, 10],
+          'line-gradient': [
+            'interpolate', ['linear'], ['line-progress'],
+            0,    'rgba(255, 102, 0, 0.0)',
+            0.25, 'rgba(255, 102, 0, 0.15)',
+            0.6,  'rgba(255, 102, 0, 0.55)',
+            1.0,  'rgba(255, 102, 0, 0.90)',
+          ],
         },
       })
 
@@ -260,6 +299,22 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
           .addTo(map)
       })
 
+      // ── 중간 휠 버튼: 잠금 해제/잠금 ──────────────────────
+      map.on('mousedown', e => {
+        if (e.originalEvent.button === 1) {
+          e.originalEvent.preventDefault()
+          middleDown = true
+        }
+      })
+
+      map.on('mouseup', e => {
+        if (e.originalEvent.button === 1) {
+          middleDown = false
+          target.lon = ship.lon
+          target.lat = ship.lat
+        }
+      })
+
       // ── 마우스 이동: 육지 감지 + 선박 목표 갱신 ─────────
       map.on('mousemove', e => {
         const { lng, lat } = e.lngLat
@@ -270,14 +325,19 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
         if (isLand) {
           landWarnCbRef.current?.(true)
         } else {
-          target.lon = lng
-          target.lat = lat
+          if (middleDown) {
+            target.lon = lng
+            target.lat = lat
+          }
           landWarnCbRef.current?.(false)
         }
         coordsCbRef.current?.({ lat: lat.toFixed(3), lon: lng.toFixed(3) })
       })
 
       map.on('mouseleave', () => {
+        middleDown = false
+        target.lon = ship.lon
+        target.lat = ship.lat
         landWarnCbRef.current?.(false)
         coordsCbRef.current?.(null)
       })
@@ -285,6 +345,8 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
       // ── LNG 속도 상수 (17.5 knots, 시뮬레이션 스케일 ×25000) ──
       // 17.5 knot × 1852 m/knot ÷ 3600 s ÷ 111320 m/deg ÷ 60fps × 25000
       const MAX_DEG_PER_FRAME = 17.5 * 1852 / (3600 * 111320 * 60) * 25000 // ≈ 0.034 deg/frame
+      let lastMoveTime = Date.now()
+      let wakeOpacity  = 0
 
       // ── 애니메이션 루프: LNG 속도 기반 이동 ─────────────
       function animate() {
@@ -329,10 +391,23 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
           heading = calcBearingDeg(prevLon, prevLat, ship.lon, ship.lat)
 
           wake.push([ship.lon, ship.lat])
-          if (wake.length > 60) wake.shift()
+          if (wake.length > 200) wake.shift()
 
+          lastMoveTime = Date.now()
+          wakeOpacity  = 1
           shipMoveCbRef.current?.(heading * Math.PI / 180)
+        } else {
+          // 멈춘 후 1.5초 뒤부터 3초에 걸쳐 서서히 사라짐
+          const elapsed = Date.now() - lastMoveTime
+          if (elapsed > 1500) {
+            wakeOpacity = Math.max(0, 1 - (elapsed - 1500) / 3000)
+            if (wakeOpacity === 0 && wake.length > 1) {
+              wake.length = 0
+              wake.push([ship.lon, ship.lat])
+            }
+          }
         }
+        map.setPaintProperty('wake-line', 'line-opacity', wakeOpacity)
 
         // GeoJSON 소스 실시간 갱신
         map.getSource('ship')?.setData({
@@ -341,14 +416,12 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning }) {
           properties: { bearing: heading },
         })
 
+        const coords = wake.length >= 2 ? wake : [[ship.lon, ship.lat], [ship.lon, ship.lat]]
         if (wake.length >= 1) {
           map.getSource('wake')?.setData({
-            type: 'FeatureCollection',
-            features: wake.map((coord, i) => ({
-              type:       'Feature',
-              geometry:   { type: 'Point', coordinates: coord },
-              properties: { age: (i + 1) / wake.length },
-            })),
+            type:       'Feature',
+            geometry:   { type: 'LineString', coordinates: coords },
+            properties: {},
           })
         }
       }

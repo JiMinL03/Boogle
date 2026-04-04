@@ -3,8 +3,8 @@
   bottom: 24px;
   right: 24px;
   width: 320px;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 102, 0, 0.22);
   border-radius: 14px;
   overflow: hidden;
   backdrop-filter: blur(12px);
@@ -37,7 +37,7 @@
 
 .hint {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.40);
+  color: rgba(58, 58, 58, 0.45);
   text-align: center;
   padding: 5px 0 8px;
   border-top: 1px solid rgba(255, 102, 0, 0.15);

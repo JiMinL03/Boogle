@@ -5,12 +5,16 @@ import Legend from './components/Legend'
 import ControlsHint from './components/ControlsHint'
 import Coords from './components/Coords'
 import ShipPanel3D from './components/ShipPanel3D'
+import ViewToggle from './components/ViewToggle'
+import LocateShip from './components/LocateShip'
 import styles from './App.module.css'
 
 export default function App() {
   const [coords,      setCoords]      = useState(null)
   const [onLand,      setOnLand]      = useState(false)
   const [heading,     setHeading]     = useState(0)
+  const [viewMode,    setViewMode]    = useState('globe')
+  const locateRef = useRef(null)
 
   const handleCoordsChange = useCallback(setCoords, [])
   const handleShipMove     = useCallback(setHeading, [])
@@ -22,9 +26,13 @@ export default function App() {
         onCoordsChange={handleCoordsChange}
         onShipMove={handleShipMove}
         onLandWarning={handleLandWarning}
+        viewMode={viewMode}
+        locateRef={locateRef}
       />
       <Header />
       <Legend />
+      <ViewToggle viewMode={viewMode} onChange={setViewMode} />
+      <LocateShip locateRef={locateRef} />
       <ControlsHint />
       <Coords coords={coords} />
 
