@@ -1,50 +1,39 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import Globe from './components/Globe'
-import Header from './components/Header'
 import Legend from './components/Legend'
 import ControlsHint from './components/ControlsHint'
 import Coords from './components/Coords'
-import ShipPanel3D from './components/ShipPanel3D'
-import ViewToggle from './components/ViewToggle'
-import LocateShip from './components/LocateShip'
+import WeatherLog from './components/WeatherLog'
 import styles from './App.module.css'
 
 export default function App() {
-  const [coords,      setCoords]      = useState(null)
-  const [onLand,      setOnLand]      = useState(false)
-  const [heading,     setHeading]     = useState(0)
-  const [viewMode,    setViewMode]    = useState('globe')
-  const locateRef = useRef(null)
+  const [coords,       setCoords]       = useState(null)
+  const [onLand,       setOnLand]       = useState(false)
+  const [shipPosition, setShipPosition] = useState(null)
 
-  const handleCoordsChange = useCallback(setCoords, [])
-  const handleShipMove     = useCallback(setHeading, [])
-  const handleLandWarning  = useCallback(setOnLand,  [])
+  const handleCoordsChange = useCallback(setCoords,       [])
+  const handleLandWarning  = useCallback(setOnLand,       [])
+  const handleShipPosition = useCallback(setShipPosition, [])
 
   return (
     <>
       <Globe
         onCoordsChange={handleCoordsChange}
-        onShipMove={handleShipMove}
         onLandWarning={handleLandWarning}
-        viewMode={viewMode}
-        locateRef={locateRef}
+        onShipPosition={handleShipPosition}
+        viewMode="mercator"
       />
-      <Header />
       <Legend />
-      <ViewToggle viewMode={viewMode} onChange={setViewMode} />
-      <LocateShip locateRef={locateRef} />
       <ControlsHint />
-      <Coords coords={coords} />
+      <Coords coords={coords} shipPosition={shipPosition} />
 
-      {/* 육지 진입 경고 */}
       {onLand && (
         <div className={styles.landWarning}>
           ⚠ 육지에는 진입할 수 없습니다
         </div>
       )}
 
-      {/* 3D 선박 패널 */}
-      <ShipPanel3D heading={heading} />
+      <WeatherLog shipPosition={shipPosition} />
     </>
   )
 }

@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { feature } from 'topojson-client'
 import { geoContains } from 'd3-geo'
 import { WAYPOINTS } from '../data/waypoints'
+import { ROUTES }    from '../data/routes'
 import { COLOR, MAPBOX_TOKEN } from '../constants/colors'
 
 // ── 선박 상공(탑뷰) 아이콘 Canvas 생성 ──────────────────
@@ -79,37 +80,18 @@ function calcBearingDeg(lon1, lat1, lon2, lat2) {
 }
 
 // ── Globe 컴포넌트 ────────────────────────────────────────
-export default function Globe({ onCoordsChange, onShipMove, onLandWarning, viewMode, locateRef }) {
+export default function Globe({ onCoordsChange, onLandWarning, onShipPosition }) {
   const containerRef = useRef(null)
   const mapRef       = useRef(null)
   const landRef      = useRef(null)
 
   // 콜백 ref (map.on('load') 내부 클로저에서 최신 함수 참조 유지)
-  const coordsCbRef   = useRef(onCoordsChange)
-  const shipMoveCbRef = useRef(onShipMove)
+  const coordsCbRef  = useRef(onCoordsChange)
   const landWarnCbRef = useRef(onLandWarning)
-  useEffect(() => { coordsCbRef.current   = onCoordsChange }, [onCoordsChange])
-  useEffect(() => { shipMoveCbRef.current = onShipMove     }, [onShipMove])
-  useEffect(() => { landWarnCbRef.current = onLandWarning  }, [onLandWarning])
-
-  // 3D ↔ 2D 전환
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
-    if (viewMode === 'mercator') {
-      map.setProjection({ name: 'mercator' })
-      map.setFog(null)
-    } else {
-      map.setProjection({ name: 'globe' })
-      map.setFog({
-        color:            'rgb(255, 255, 255)',
-        'high-color':     'rgb(180, 215, 255)',
-        'horizon-blend':  0.08,
-        'space-color':    'rgb(8, 11, 26)',
-        'star-intensity': 0.80,
-      })
-    }
-  }, [viewMode])
+  const shipPosCbRef  = useRef(onShipPosition)
+  useEffect(() => { coordsCbRef.current   = onCoordsChange  }, [onCoordsChange])
+  useEffect(() => { landWarnCbRef.current = onLandWarning   }, [onLandWarning])
+  useEffect(() => { shipPosCbRef.current  = onShipPosition  }, [onShipPosition])
 
   // 육지 데이터 로드
   useEffect(() => {
@@ -130,7 +112,7 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning, viewM
       style:      'mapbox://styles/mapbox/streets-v12',
       center:     [130, 30],
       zoom:       2.8,
-      projection: { name: 'globe' },
+      projection: { name: 'mercator' },
       antialias:  true,
     })
     mapRef.current = map
@@ -143,23 +125,7 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning, viewM
     let   rafId
     let   middleDown = false
 
-    // 선박 위치로 카메라 이동 함수 외부 노출
-    if (locateRef) {
-      locateRef.current = () => {
-        map.flyTo({ center: [ship.lon, ship.lat], zoom: 4, duration: 1400 })
-      }
-    }
-
     map.on('load', () => {
-      // ── 대기 + 우주 (스크린샷처럼 흰 대기광) ────────────
-      map.setFog({
-        color:            'rgb(255, 255, 255)',     // 지평선 흰 빛
-        'high-color':     'rgb(180, 215, 255)',     // 상단 하늘색
-        'horizon-blend':  0.08,
-        'space-color':    'rgb(8, 11, 26)',         // 우주 어두운 남색
-        'star-intensity': 0.80,
-      })
-
       // ── 선박 아이콘 등록 (ImageData로 변환 → v3 호환) ───
       const shipCanvas = makeShipCanvas()
       const shipCtx    = shipCanvas.getContext('2d')
@@ -168,6 +134,29 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning, viewM
         width:  shipCanvas.width,
         height: shipCanvas.height,
         data:   imgData.data,
+      })
+
+      // ── 항로 레이어 (선박·항적 아래에 렌더링) ────────────
+      ROUTES.forEach(route => {
+        map.addSource(`route-${route.id}`, {
+          type: 'geojson',
+          data: {
+            type:     'Feature',
+            geometry: { type: 'LineString', coordinates: route.coords },
+            properties: {},
+          },
+        })
+        map.addLayer({
+          id:     `route-${route.id}`,
+          type:   'line',
+          source: `route-${route.id}`,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color':   route.color,
+            'line-width':   ['interpolate', ['linear'], ['zoom'], 1, 1.5, 4, 2.5, 8, 4],
+            'line-opacity': 0.75,
+          },
+        })
       })
 
       // ── 소스 등록 ────────────────────────────────────────
@@ -342,11 +331,15 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning, viewM
         coordsCbRef.current?.(null)
       })
 
-      // ── LNG 속도 상수 (17.5 knots, 시뮬레이션 스케일 ×25000) ──
-      // 17.5 knot × 1852 m/knot ÷ 3600 s ÷ 111320 m/deg ÷ 60fps × 25000
-      const MAX_DEG_PER_FRAME = 17.5 * 1852 / (3600 * 111320 * 60) * 25000 // ≈ 0.034 deg/frame
+      // ── 유조선 속도 상수 (11.4 knots, 시뮬레이션 스케일 ×1000) ──
+      // 실제: 11.4kt × 1852m/kt ÷ 3600s ÷ 111320m/° ÷ 60fps = 8.78e-7 °/frame
+      // ×1000 시간 압축 → 지구 기준으로 위성에서 보이는 수준의 느린 속도
+      const SHIP_KNOTS        = 11.4
+      const MAX_DEG_PER_FRAME = SHIP_KNOTS * 1852 / (3600 * 111320 * 60) * 1000 // ≈ 0.000878 °/frame
       let lastMoveTime = Date.now()
       let wakeOpacity  = 0
+      let shipPosFrame = 0
+      let isMoving     = false
 
       // ── 애니메이션 루프: LNG 속도 기반 이동 ─────────────
       function animate() {
@@ -388,15 +381,16 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning, viewM
         const moveLat = ship.lat - prevLat
 
         if (Math.abs(moveLon) > 1e-9 || Math.abs(moveLat) > 1e-9) {
-          heading = calcBearingDeg(prevLon, prevLat, ship.lon, ship.lat)
+          heading  = calcBearingDeg(prevLon, prevLat, ship.lon, ship.lat)
+          isMoving = true
 
           wake.push([ship.lon, ship.lat])
           if (wake.length > 200) wake.shift()
 
           lastMoveTime = Date.now()
           wakeOpacity  = 1
-          shipMoveCbRef.current?.(heading * Math.PI / 180)
         } else {
+          isMoving = false
           // 멈춘 후 1.5초 뒤부터 3초에 걸쳐 서서히 사라짐
           const elapsed = Date.now() - lastMoveTime
           if (elapsed > 1500) {
@@ -408,6 +402,19 @@ export default function Globe({ onCoordsChange, onShipMove, onLandWarning, viewM
           }
         }
         map.setPaintProperty('wake-line', 'line-opacity', wakeOpacity)
+
+        // 선박 위치 6프레임마다 외부로 전송 (~10Hz, 좌표·방향·속도 실시간 표시용)
+        shipPosFrame++
+        if (shipPosFrame >= 6) {
+          shipPosFrame = 0
+          shipPosCbRef.current?.({
+            lat:     ship.lat,
+            lon:     ship.lon,
+            heading,
+            moving:  isMoving,
+            knots:   SHIP_KNOTS,
+          })
+        }
 
         // GeoJSON 소스 실시간 갱신
         map.getSource('ship')?.setData({
