@@ -22,7 +22,7 @@ function formatTime(date) {
   return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 }
 
-export default function WeatherLog({ shipPosition }) {
+export default function WeatherLog({ shipPosition, isRunning }) {
   const [logs,    setLogs]    = useState([])
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
@@ -31,7 +31,7 @@ export default function WeatherLog({ shipPosition }) {
   const fetchingRef   = useRef(false)
 
   useEffect(() => {
-    if (!shipPosition || fetchingRef.current) return
+    if (!isRunning || !shipPosition || fetchingRef.current) return
 
     const elapsed = Date.now() - lastFetchTime.current
     if (elapsed < INTERVAL_MS) return
@@ -69,7 +69,7 @@ export default function WeatherLog({ shipPosition }) {
         setLoading(false)
         fetchingRef.current = false
       })
-  }, [shipPosition])
+  }, [shipPosition, isRunning])
 
   const latest = logs[0]
 

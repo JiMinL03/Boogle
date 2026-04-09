@@ -23,3 +23,51 @@
   from { opacity: 0; transform: translate(-50%, -48%); }
   to   { opacity: 1; transform: translate(-50%, -50%); }
 }
+
+/* ── 하단 컨트롤 바 ─────────────────────────────────────── */
+.controlBar {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 200;
+}
+
+.reselectBtn,
+.runBtn {
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(10px);
+  transition: opacity 0.15s, transform 0.1s;
+}
+.reselectBtn:hover,
+.runBtn:hover { opacity: 0.85; transform: translateY(-1px); }
+.reselectBtn:active,
+.runBtn:active { transform: translateY(0); }
+
+.reselectBtn {
+  background: rgba(30, 40, 60, 0.82);
+  color: rgba(180, 210, 240, 0.9);
+  border-color: rgba(100, 150, 200, 0.3);
+}
+
+.runBtnStart {
+  background: rgba(0, 160, 80, 0.88);
+  color: #fff;
+  border-color: rgba(0, 220, 100, 0.4);
+  box-shadow: 0 0 14px rgba(0, 200, 80, 0.35);
+}
+
+.runBtnStop {
+  background: rgba(200, 50, 20, 0.88);
+  color: #fff;
+  border-color: rgba(255, 80, 40, 0.4);
+  box-shadow: 0 0 14px rgba(220, 60, 20, 0.35);
+}

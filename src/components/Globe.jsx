@@ -84,12 +84,13 @@ function calcBearingDeg(lon1, lat1, lon2, lat2) {
 }
 
 // ── Globe 컴포넌트 ────────────────────────────────────────
-export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, routeId }) {
+export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, routeId, isRunning }) {
   const containerRef  = useRef(null)
   const mapRef        = useRef(null)
   // 자동 항행 웨이포인트 큐 (외부에서 설정 → animate 루프에서 소비)
   const autoRouteRef  = useRef(null) // { waypoints: [{lon,lat},...], wpIdx: 0 }
-  const routeIdRef    = useRef(routeId) // 최신 routeId를 load 클로저에서 참조
+  const routeIdRef    = useRef(routeId)   // 최신 routeId를 load 클로저에서 참조
+  const isRunningRef  = useRef(isRunning) // 최신 isRunning을 animate 클로저에서 참조
 
   // 콜백 ref (map.on('load') 내부 클로저에서 최신 함수 참조 유지)
   const coordsCbRef   = useRef(onCoordsChange)
@@ -98,6 +99,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
   useEffect(() => { coordsCbRef.current   = onCoordsChange  }, [onCoordsChange])
   useEffect(() => { landWarnCbRef.current = onLandWarning   }, [onLandWarning])
   useEffect(() => { shipPosCbRef.current  = onShipPosition  }, [onShipPosition])
+  useEffect(() => { isRunningRef.current  = isRunning       }, [isRunning])
 
   // routeId 변경 → 자동 항행 설정 + 해당 항로 레이어만 표시
   useEffect(() => {
@@ -370,74 +372,81 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
         // 이 프레임에서 이동 가능한 거리(m) = 실제속도 × 동적시간압축 × 프레임시간
         const stepMeters = SPEED_MS * getTimeScale() * deltaTime
 
-        // 자동 항행: 현재 목표 웨이포인트로 target 갱신
-        const ar = autoRouteRef.current
-        if (ar && ar.wpIdx < ar.waypoints.length) {
-          const wp = ar.waypoints[ar.wpIdx]
-          target.lon = wp.lon
-          target.lat = wp.lat
-        }
-
-        const prevLon = ship.lon
-        const prevLat = ship.lat
-
-        // 위도에서 경도 1° 의 실제 거리(m)
-        const mPerDegLon = M_PER_DEG_LAT * Math.cos(ship.lat * Math.PI / 180)
-
-        // 목표까지의 벡터를 미터 단위로 변환
-        const dLon   = target.lon - ship.lon
-        const dLat   = target.lat - ship.lat
-        const dLon_m = dLon * mPerDegLon
-        const dLat_m = dLat * M_PER_DEG_LAT
-        const distM  = Math.sqrt(dLon_m ** 2 + dLat_m ** 2)
-
-        let nextLon, nextLat
-        if (distM < 1) {
-          // 목표 도달 (1m 이내)
-          nextLon = ship.lon
-          nextLat = ship.lat
-        } else if (distM <= stepMeters) {
-          // 이번 프레임에 목표 도달
-          nextLon = target.lon
-          nextLat = target.lat
-        } else {
-          // stepMeters 만큼 이동 → 다시 도(°)로 변환
-          const scale = stepMeters / distM
-          nextLon = ship.lon + (dLon_m * scale) / mPerDegLon
-          nextLat = ship.lat + (dLat_m * scale) / M_PER_DEG_LAT
-        }
-
-        ship.lon = nextLon
-        ship.lat = nextLat
-
-        // 자동 항행: 현재 waypoint 도달 시 다음으로 진행
-        const ar2 = autoRouteRef.current
-        if (ar2 && ar2.wpIdx < ar2.waypoints.length) {
-          const wp       = ar2.waypoints[ar2.wpIdx]
-          const mPerDLon = M_PER_DEG_LAT * Math.cos(ship.lat * Math.PI / 180)
-          const dWpLon_m = (wp.lon - ship.lon) * mPerDLon
-          const dWpLat_m = (wp.lat - ship.lat) * M_PER_DEG_LAT
-          const wpDistM  = Math.sqrt(dWpLon_m ** 2 + dWpLat_m ** 2)
-          if (wpDistM < stepMeters * 2) {
-            ar2.wpIdx++
+        if (isRunningRef.current) {
+          // 자동 항행: 현재 목표 웨이포인트로 target 갱신
+          const ar = autoRouteRef.current
+          if (ar && ar.wpIdx < ar.waypoints.length) {
+            const wp = ar.waypoints[ar.wpIdx]
+            target.lon = wp.lon
+            target.lat = wp.lat
           }
-        }
 
-        const moveLon = ship.lon - prevLon
-        const moveLat = ship.lat - prevLat
+          const prevLon = ship.lon
+          const prevLat = ship.lat
 
-        if (Math.abs(moveLon) > 1e-9 || Math.abs(moveLat) > 1e-9) {
-          heading  = calcBearingDeg(prevLon, prevLat, ship.lon, ship.lat)
-          isMoving = true
+          // 위도에서 경도 1° 의 실제 거리(m)
+          const mPerDegLon = M_PER_DEG_LAT * Math.cos(ship.lat * Math.PI / 180)
 
-          wake.push([ship.lon, ship.lat])
-          if (wake.length > 200) wake.shift()
+          // 목표까지의 벡터를 미터 단위로 변환
+          const dLon   = target.lon - ship.lon
+          const dLat   = target.lat - ship.lat
+          const dLon_m = dLon * mPerDegLon
+          const dLat_m = dLat * M_PER_DEG_LAT
+          const distM  = Math.sqrt(dLon_m ** 2 + dLat_m ** 2)
 
-          lastMoveTime = Date.now()
-          wakeOpacity  = 1
+          let nextLon, nextLat
+          if (distM < 1) {
+            nextLon = ship.lon
+            nextLat = ship.lat
+          } else if (distM <= stepMeters) {
+            nextLon = target.lon
+            nextLat = target.lat
+          } else {
+            const scale = stepMeters / distM
+            nextLon = ship.lon + (dLon_m * scale) / mPerDegLon
+            nextLat = ship.lat + (dLat_m * scale) / M_PER_DEG_LAT
+          }
+
+          ship.lon = nextLon
+          ship.lat = nextLat
+
+          // 자동 항행: 현재 waypoint 도달 시 다음으로 진행
+          const ar2 = autoRouteRef.current
+          if (ar2 && ar2.wpIdx < ar2.waypoints.length) {
+            const wp       = ar2.waypoints[ar2.wpIdx]
+            const mPerDLon = M_PER_DEG_LAT * Math.cos(ship.lat * Math.PI / 180)
+            const dWpLon_m = (wp.lon - ship.lon) * mPerDLon
+            const dWpLat_m = (wp.lat - ship.lat) * M_PER_DEG_LAT
+            const wpDistM  = Math.sqrt(dWpLon_m ** 2 + dWpLat_m ** 2)
+            if (wpDistM < stepMeters * 2) {
+              ar2.wpIdx++
+            }
+          }
+
+          const moveLon = ship.lon - prevLon
+          const moveLat = ship.lat - prevLat
+
+          if (Math.abs(moveLon) > 1e-9 || Math.abs(moveLat) > 1e-9) {
+            heading  = calcBearingDeg(prevLon, prevLat, ship.lon, ship.lat)
+            isMoving = true
+            wake.push([ship.lon, ship.lat])
+            if (wake.length > 200) wake.shift()
+            lastMoveTime = Date.now()
+            wakeOpacity  = 1
+          } else {
+            isMoving = false
+            const elapsed = Date.now() - lastMoveTime
+            if (elapsed > 1500) {
+              wakeOpacity = Math.max(0, 1 - (elapsed - 1500) / 3000)
+              if (wakeOpacity === 0 && wake.length > 1) {
+                wake.length = 0
+                wake.push([ship.lon, ship.lat])
+              }
+            }
+          }
         } else {
+          // 정지 중: 항적 서서히 사라짐
           isMoving = false
-          // 멈춘 후 1.5초 뒤부터 3초에 걸쳐 서서히 사라짐
           const elapsed = Date.now() - lastMoveTime
           if (elapsed > 1500) {
             wakeOpacity = Math.max(0, 1 - (elapsed - 1500) / 3000)
@@ -449,17 +458,19 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
         }
         map.setPaintProperty('wake-line', 'line-opacity', wakeOpacity)
 
-        // 선박 위치 6프레임마다 외부로 전송 (~10Hz, 좌표·방향·속도 실시간 표시용)
-        shipPosFrame++
-        if (shipPosFrame >= 6) {
-          shipPosFrame = 0
-          shipPosCbRef.current?.({
-            lat:     ship.lat,
-            lon:     ship.lon,
-            heading,
-            moving:  isMoving,
-            knots:   SHIP_KNOTS,
-          })
+        // 선박 위치 6프레임마다 외부로 전송 (isRunning 중에만)
+        if (isRunningRef.current) {
+          shipPosFrame++
+          if (shipPosFrame >= 6) {
+            shipPosFrame = 0
+            shipPosCbRef.current?.({
+              lat:     ship.lat,
+              lon:     ship.lon,
+              heading,
+              moving:  isMoving,
+              knots:   SHIP_KNOTS,
+            })
+          }
         }
 
         // GeoJSON 소스 실시간 갱신

@@ -13,6 +13,7 @@ export default function App() {
   const [coords,       setCoords]       = useState(null)
   const [onLand,       setOnLand]       = useState(false)
   const [shipPosition, setShipPosition] = useState(null)
+  const [isRunning,    setIsRunning]    = useState(false)
 
   // 새로고침 시 서버에서 저장된 항로 복원
   useEffect(() => {
@@ -30,6 +31,12 @@ export default function App() {
   const handleConfirm = useCallback((id) => {
     setRouteId(id)
     setPage('map')
+    setIsRunning(false)
+  }, [])
+
+  const handleReselect = useCallback(() => {
+    setIsRunning(false)
+    setPage('select')
   }, [])
 
   const handleCoordsChange = useCallback(setCoords,       [])
@@ -47,6 +54,7 @@ export default function App() {
         onLandWarning={handleLandWarning}
         onShipPosition={handleShipPosition}
         routeId={routeId}
+        isRunning={isRunning}
       />
       <Legend />
       <ControlsHint />
@@ -58,7 +66,19 @@ export default function App() {
         </div>
       )}
 
-      <WeatherLog shipPosition={shipPosition} />
+      <div className={styles.controlBar}>
+        <button className={styles.reselectBtn} onClick={handleReselect}>
+          항로 재선택
+        </button>
+        <button
+          className={`${styles.runBtn} ${isRunning ? styles.runBtnStop : styles.runBtnStart}`}
+          onClick={() => setIsRunning(r => !r)}
+        >
+          {isRunning ? '■ 중단' : '▶ 시작'}
+        </button>
+      </div>
+
+      <WeatherLog shipPosition={shipPosition} isRunning={isRunning} />
     </>
   )
 }
