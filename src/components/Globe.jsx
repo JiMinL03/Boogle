@@ -132,10 +132,10 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
     mapRef.current = map
 
     // 선박 상태
-    const ship   = { lon: 127.0, lat: 36.9 } // 평택 LNG 터미널 출발
-    const target = { lon: 127.0, lat: 36.9 }
+    const ship   = { lon: 126.945, lat: 36.916 } // 평택 LNG 터미널 출발
+    const target = { lon: 126.945, lat: 36.916 }
     let   heading = 0
-    const wake    = [[127.0, 36.9]]
+    const wake    = [[126.945, 36.916]]
     let   rafId
     let   middleDown = false
 
@@ -192,7 +192,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
         lineMetrics: true,
         data: {
           type:       'Feature',
-          geometry:   { type: 'LineString', coordinates: [[127.0, 36.9], [127.0, 36.9]] },
+          geometry:   { type: 'LineString', coordinates: [[126.945, 36.916], [126.945, 36.916]] },
           properties: {},
         },
       })
