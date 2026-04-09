@@ -1,10 +1,14 @@
 import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { feature } from 'topojson-client'
-import { geoContains } from 'd3-geo'
 import { WAYPOINTS } from '../data/waypoints'
 import { ROUTES }    from '../data/routes'
+
+// routes.js 좌표 [lon, lat] → {lon, lat} 변환
+function routeWaypoints(routeId) {
+  const route = ROUTES.find(r => r.id === routeId)
+  return route ? route.coords.map(([lon, lat]) => ({ lon, lat })) : null
+}
 import { COLOR, MAPBOX_TOKEN } from '../constants/colors'
 
 // ── 선박 상공(탑뷰) 아이콘 Canvas 생성 ──────────────────
@@ -80,26 +84,34 @@ function calcBearingDeg(lon1, lat1, lon2, lat2) {
 }
 
 // ── Globe 컴포넌트 ────────────────────────────────────────
-export default function Globe({ onCoordsChange, onLandWarning, onShipPosition }) {
-  const containerRef = useRef(null)
-  const mapRef       = useRef(null)
-  const landRef      = useRef(null)
+export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, routeId }) {
+  const containerRef  = useRef(null)
+  const mapRef        = useRef(null)
+  // 자동 항행 웨이포인트 큐 (외부에서 설정 → animate 루프에서 소비)
+  const autoRouteRef  = useRef(null) // { waypoints: [{lon,lat},...], wpIdx: 0 }
+  const routeIdRef    = useRef(routeId) // 최신 routeId를 load 클로저에서 참조
 
   // 콜백 ref (map.on('load') 내부 클로저에서 최신 함수 참조 유지)
-  const coordsCbRef  = useRef(onCoordsChange)
+  const coordsCbRef   = useRef(onCoordsChange)
   const landWarnCbRef = useRef(onLandWarning)
   const shipPosCbRef  = useRef(onShipPosition)
   useEffect(() => { coordsCbRef.current   = onCoordsChange  }, [onCoordsChange])
   useEffect(() => { landWarnCbRef.current = onLandWarning   }, [onLandWarning])
   useEffect(() => { shipPosCbRef.current  = onShipPosition  }, [onShipPosition])
 
-  // 육지 데이터 로드
+  // routeId 변경 → 자동 항행 설정 + 해당 항로 레이어만 표시
   useEffect(() => {
-    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-      .then(r => r.json())
-      .then(world => { landRef.current = feature(world, world.objects.land) })
-      .catch(() => {})
-  }, [])
+    routeIdRef.current = routeId
+    const wps = routeWaypoints(routeId)
+    if (!wps || wps.length < 2) { autoRouteRef.current = null; return }
+    autoRouteRef.current = { waypoints: wps, wpIdx: 0 }
+
+    const map = mapRef.current
+    if (!map?.isStyleLoaded()) return
+    ROUTES.forEach(r => {
+      map.setLayoutProperty(`route-${r.id}`, 'visibility', r.id === routeId ? 'visible' : 'none')
+    })
+  }, [routeId])
 
   // Mapbox 초기화 (한 번만)
   useEffect(() => {
@@ -117,11 +129,11 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition })
     })
     mapRef.current = map
 
-    // 선박 상태 (ref 불필요 - Mapbox 루프 클로저에서만 접근)
-    const ship   = { lon: 130, lat: 30 }
-    const target = { lon: 130, lat: 30 }
+    // 선박 상태
+    const ship   = { lon: 127.0, lat: 36.9 } // 평택 LNG 터미널 출발
+    const target = { lon: 127.0, lat: 36.9 }
     let   heading = 0
-    const wake    = [[130, 30]]
+    const wake    = [[127.0, 36.9]]
     let   rafId
     let   middleDown = false
 
@@ -150,7 +162,11 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition })
           id:     `route-${route.id}`,
           type:   'line',
           source: `route-${route.id}`,
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          layout: {
+            'line-cap':   'round',
+            'line-join':  'round',
+            'visibility': route.id === routeIdRef.current ? 'visible' : 'none',
+          },
           paint: {
             'line-color':   route.color,
             'line-width':   ['interpolate', ['linear'], ['zoom'], 1, 1.5, 4, 2.5, 8, 4],
@@ -174,7 +190,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition })
         lineMetrics: true,
         data: {
           type:       'Feature',
-          geometry:   { type: 'LineString', coordinates: [[130, 30], [130, 30]] },
+          geometry:   { type: 'LineString', coordinates: [[127.0, 36.9], [127.0, 36.9]] },
           properties: {},
         },
       })
@@ -307,18 +323,9 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition })
       // ── 마우스 이동: 육지 감지 + 선박 목표 갱신 ─────────
       map.on('mousemove', e => {
         const { lng, lat } = e.lngLat
-        const isLand = landRef.current
-          ? geoContains(landRef.current, [lng, lat])
-          : false
-
-        if (isLand) {
-          landWarnCbRef.current?.(true)
-        } else {
-          if (middleDown) {
-            target.lon = lng
-            target.lat = lat
-          }
-          landWarnCbRef.current?.(false)
+        if (middleDown) {
+          target.lon = lng
+          target.lat = lat
         }
         coordsCbRef.current?.({ lat: lat.toFixed(3), lon: lng.toFixed(3) })
       })
@@ -331,50 +338,89 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition })
         coordsCbRef.current?.(null)
       })
 
-      // ── 유조선 속도 상수 (11.4 knots, 시뮬레이션 스케일 ×1000) ──
-      // 실제: 11.4kt × 1852m/kt ÷ 3600s ÷ 111320m/° ÷ 60fps = 8.78e-7 °/frame
-      // ×1000 시간 압축 → 지구 기준으로 위성에서 보이는 수준의 느린 속도
-      const SHIP_KNOTS        = 11.4
-      const MAX_DEG_PER_FRAME = SHIP_KNOTS * 1852 / (3600 * 111320 * 60) * 1000 // ≈ 0.000878 °/frame
+      // ── 선박 속도 상수 (16 knots) ──────────────────────────
+      // 1 knot = 1 해리/h = 1852 m/h
+      // TIME_SCALE: 줌 레벨에 따라 동적으로 결정 (줌아웃=빠름, 줌인=느림)
+      const SHIP_KNOTS    = 16
+      const SPEED_MS      = SHIP_KNOTS * 1852 / 3600  // ≈ 8.231 m/s
+      const M_PER_DEG_LAT = 111320                    // 위도 1° = 111,320 m (고정)
+      // 줌 ≤5 → 1000배속, 줌 ≥15 → 1배속, 사이는 로그 보간
+      function getTimeScale() {
+        const zoom = map.getZoom()
+        const ZOOM_MIN = 5, ZOOM_MAX = 15
+        const SCALE_MIN = 1, SCALE_MAX = 1
+        const t = Math.max(0, Math.min(1, (zoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN)))
+        // 로그 보간: 시각적으로 자연스러운 배속 변화
+        return SCALE_MAX * Math.pow(SCALE_MIN / SCALE_MAX, t)
+      }
+      let lastTime     = performance.now()
       let lastMoveTime = Date.now()
       let wakeOpacity  = 0
       let shipPosFrame = 0
       let isMoving     = false
 
-      // ── 애니메이션 루프: LNG 속도 기반 이동 ─────────────
+      // ── 애니메이션 루프: 실거리(m) 기반 이동 ─────────────
       function animate() {
         rafId = requestAnimationFrame(animate)
+
+        // deltaTime: 프레임 간 경과 시간(초), 최대 0.1s 클램프(탭 복귀 등 대비)
+        const now        = performance.now()
+        const deltaTime  = Math.min((now - lastTime) / 1000, 0.1)
+        lastTime         = now
+        // 이 프레임에서 이동 가능한 거리(m) = 실제속도 × 동적시간압축 × 프레임시간
+        const stepMeters = SPEED_MS * getTimeScale() * deltaTime
+
+        // 자동 항행: 현재 목표 웨이포인트로 target 갱신
+        const ar = autoRouteRef.current
+        if (ar && ar.wpIdx < ar.waypoints.length) {
+          const wp = ar.waypoints[ar.wpIdx]
+          target.lon = wp.lon
+          target.lat = wp.lat
+        }
 
         const prevLon = ship.lon
         const prevLat = ship.lat
 
-        // 위도에 따른 경도 보정 (등거리 이동)
-        const cosLat  = Math.cos(ship.lat * Math.PI / 180)
-        const dLon    = target.lon - ship.lon
-        const dLat    = target.lat - ship.lat
-        const distDeg = Math.sqrt((dLon * cosLat) ** 2 + dLat ** 2)
+        // 위도에서 경도 1° 의 실제 거리(m)
+        const mPerDegLon = M_PER_DEG_LAT * Math.cos(ship.lat * Math.PI / 180)
+
+        // 목표까지의 벡터를 미터 단위로 변환
+        const dLon   = target.lon - ship.lon
+        const dLat   = target.lat - ship.lat
+        const dLon_m = dLon * mPerDegLon
+        const dLat_m = dLat * M_PER_DEG_LAT
+        const distM  = Math.sqrt(dLon_m ** 2 + dLat_m ** 2)
 
         let nextLon, nextLat
-        if (distDeg < 1e-6) {
+        if (distM < 1) {
+          // 목표 도달 (1m 이내)
           nextLon = ship.lon
           nextLat = ship.lat
-        } else if (distDeg <= MAX_DEG_PER_FRAME) {
+        } else if (distM <= stepMeters) {
+          // 이번 프레임에 목표 도달
           nextLon = target.lon
           nextLat = target.lat
         } else {
-          const scale = MAX_DEG_PER_FRAME / distDeg
-          nextLon = ship.lon + dLon * scale
-          nextLat = ship.lat + dLat * scale
+          // stepMeters 만큼 이동 → 다시 도(°)로 변환
+          const scale = stepMeters / distM
+          nextLon = ship.lon + (dLon_m * scale) / mPerDegLon
+          nextLat = ship.lat + (dLat_m * scale) / M_PER_DEG_LAT
         }
 
-        // 새 위치가 육지이면 이동하지 않음
-        const nextOnLand = landRef.current
-          ? geoContains(landRef.current, [nextLon, nextLat])
-          : false
+        ship.lon = nextLon
+        ship.lat = nextLat
 
-        if (!nextOnLand) {
-          ship.lon = nextLon
-          ship.lat = nextLat
+        // 자동 항행: 현재 waypoint 도달 시 다음으로 진행
+        const ar2 = autoRouteRef.current
+        if (ar2 && ar2.wpIdx < ar2.waypoints.length) {
+          const wp       = ar2.waypoints[ar2.wpIdx]
+          const mPerDLon = M_PER_DEG_LAT * Math.cos(ship.lat * Math.PI / 180)
+          const dWpLon_m = (wp.lon - ship.lon) * mPerDLon
+          const dWpLat_m = (wp.lat - ship.lat) * M_PER_DEG_LAT
+          const wpDistM  = Math.sqrt(dWpLon_m ** 2 + dWpLat_m ** 2)
+          if (wpDistM < stepMeters * 2) {
+            ar2.wpIdx++
+          }
         }
 
         const moveLon = ship.lon - prevLon
