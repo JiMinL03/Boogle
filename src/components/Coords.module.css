@@ -1,23 +1,23 @@
+/* ── 좌표 패널 ───────────────────────────────────────────── */
 .coords {
   position: fixed;
-  bottom: 24px;
+  bottom: 28px;
   left: 24px;
   z-index: 200;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(255, 102, 0, 0.22);
-  border-bottom: 2.5px solid var(--orange);
-  border-radius: 14px;
-  padding: 8px 14px 9px;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: var(--shadow);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 150, 80, 0.38);
+  border-radius: 20px;
+  padding: 10px 16px 11px;
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: 0 8px 32px rgba(255, 80, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.55);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   font-variant-numeric: tabular-nums;
 }
 
-/* ── 선박 좌표 행 ─── */
+/* ── 선박 좌표 행 ────────────────────────────────────────── */
 .shipRow {
   display: flex;
   align-items: center;
@@ -27,9 +27,10 @@
 .shipLabel {
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--orange);
+  color: rgba(255, 140, 60, 0.9);
+  text-shadow: 0 0 8px rgba(255,100,0,0.4);
   width: 26px;
   flex-shrink: 0;
 }
@@ -37,29 +38,31 @@
 .shipVal {
   font-size: 12px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: rgba(255, 255, 255, 0.95);
   letter-spacing: 0.04em;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.25);
 }
 
 .sep {
   font-size: 10px;
-  color: rgba(58,58,58,0.3);
+  color: rgba(255, 150, 80, 0.5);
 }
 
-/* ── 방향 + 속도 행 ─── */
+/* ── 방향 + 속도 행 ─────────────────────────────────────── */
 .statusRow {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 0 1px;
-  border-top: 1px solid rgba(255,102,0,0.10);
-  border-bottom: 1px solid rgba(255,102,0,0.10);
+  gap: 5px;
+  padding: 4px 0 2px;
+  border-top:    1px solid rgba(255, 150, 80, 0.2);
+  border-bottom: 1px solid rgba(255, 150, 80, 0.2);
 }
 
 .statusIcon {
   display: inline-block;
   font-size: 13px;
-  color: var(--orange);
+  color: rgba(255, 140, 60, 0.9);
+  text-shadow: 0 0 8px rgba(255,100,0,0.4);
   line-height: 1;
   transition: transform 0.4s ease;
 }
@@ -67,19 +70,20 @@
 .statusDir {
   font-size: 12px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: rgba(255,255,255,0.92);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
   min-width: 30px;
 }
 
 .statusDeg {
   font-size: 10px;
-  color: rgba(58,58,58,0.45);
+  color: rgba(255, 200, 150, 0.65);
   font-variant-numeric: tabular-nums;
 }
 
 .statusSep {
   font-size: 10px;
-  color: rgba(58,58,58,0.25);
+  color: rgba(255, 150, 80, 0.35);
 }
 
 .statusSpeed {
@@ -88,10 +92,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-.moving  { color: var(--orange); }
-.stopped { color: rgba(58,58,58,0.35); }
+.moving  {
+  color: rgba(255, 160, 60, 0.95);
+  text-shadow: 0 0 8px rgba(255,100,0,0.35);
+}
+.stopped { color: rgba(255, 255, 255, 0.35); }
 
-/* ── 커서 좌표 행 ─── */
+/* ── 커서 좌표 행 ────────────────────────────────────────── */
 .cursorRow {
   display: flex;
   align-items: center;
@@ -101,9 +108,9 @@
 .cursorLabel {
   font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(58,58,58,0.38);
+  color: rgba(255, 180, 120, 0.55);
   width: 26px;
   flex-shrink: 0;
 }
@@ -111,11 +118,11 @@
 .cursorVal {
   font-size: 10px;
   font-weight: 500;
-  color: rgba(58,58,58,0.55);
+  color: rgba(255, 255, 255, 0.55);
   letter-spacing: 0.03em;
 }
 
 .dash {
   font-size: 10px;
-  color: rgba(58,58,58,0.28);
+  color: rgba(255, 255, 255, 0.28);
 }

@@ -1,6 +1,6 @@
 export const COLOR = {
   canal:  { hex: '#FF6B00', rgb: [255, 107,   0] },
-  strait: { hex: '#4A90D9', rgb: [ 74, 144, 217] },
+  strait: { hex: '#4862f7', rgb: [ 21, 101, 192] },
   cape:   { hex: '#00BFA5', rgb: [  0, 191, 165] },
 }
 

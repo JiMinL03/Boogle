@@ -123,7 +123,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
 
     const map = new mapboxgl.Map({
       container:  containerRef.current,
-      style:      'mapbox://styles/mapbox/streets-v12',
+      style:      'mapbox://styles/mapbox/dark-v11',
       center:     [130, 30],
       zoom:       2.8,
       projection: { name: 'mercator' },
@@ -138,6 +138,10 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
     const wake    = [[126.945, 36.916]]
     let   rafId
     let   middleDown = false
+
+    map.on('style.load', () => {
+      map.setConfigProperty('basemap', 'lightPreset', 'night')
+    })
 
     map.on('load', () => {
       // ── 선박 아이콘 등록 (ImageData로 변환 → v3 호환) ───
@@ -164,6 +168,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
           id:     `route-${route.id}`,
           type:   'line',
           source: `route-${route.id}`,
+          slot:   'top',
           layout: {
             'line-cap':   'round',
             'line-join':  'round',
@@ -172,7 +177,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
           paint: {
             'line-color':   route.color,
             'line-width':   ['interpolate', ['linear'], ['zoom'], 1, 1.5, 4, 2.5, 8, 4],
-            'line-opacity': 0.75,
+            'line-opacity': 0.9,
           },
         })
       })
@@ -202,6 +207,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
         id:     'wake-line',
         type:   'line',
         source: 'wake',
+        slot:   'top',
         layout: {
           'line-cap':  'round',
           'line-join': 'round',
@@ -223,6 +229,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
         id:     'ship-layer',
         type:   'symbol',
         source: 'ship',
+        slot:   'top',
         layout: {
           'icon-image':              'ship-icon',
           'icon-size': ['interpolate', ['linear'], ['zoom'],

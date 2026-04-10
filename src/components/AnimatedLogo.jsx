@@ -1,5 +1,5 @@
 import styles from './AnimatedLogo.module.css'
-import ciLogo from '../assets/ci_concept.png'
+import ciLogo from '../assets/ci_concept.svg'
 
 export default function AnimatedLogo() {
   return (

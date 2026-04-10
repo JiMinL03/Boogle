@@ -3,20 +3,22 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(200, 50, 0, 0.90);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 89, 0, 0.35);
+  color: #ff5900;
   font-size: 14px;
   font-weight: 700;
-  padding: 12px 26px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 120, 40, 0.55);
-  border-top: 2.5px solid #FF6600;
-  backdrop-filter: blur(8px);
+  padding: 14px 28px;
+  border-radius: 20px;
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
   pointer-events: none;
   z-index: 100;
   animation: fadeIn 0.15s ease;
   letter-spacing: 0.03em;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 24px rgba(255,80,0,0.30);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 @keyframes fadeIn {
@@ -37,37 +39,58 @@
 
 .reselectBtn,
 .runBtn {
-  padding: 10px 22px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.15);
+  padding: 11px 26px;
+  border-radius: 50px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   letter-spacing: 0.04em;
-  backdrop-filter: blur(10px);
-  transition: opacity 0.15s, transform 0.1s;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.05) 45%,
+    rgba(255, 255, 255, 0.09) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 40px rgba(255, 255, 255, 0.03);
 }
 .reselectBtn:hover,
-.runBtn:hover { opacity: 0.85; transform: translateY(-1px); }
+.runBtn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 40px rgba(255, 255, 255, 0.06);
+}
 .reselectBtn:active,
 .runBtn:active { transform: translateY(0); }
 
 .reselectBtn {
-  background: rgba(30, 40, 60, 0.82);
-  color: rgba(180, 210, 240, 0.9);
-  border-color: rgba(100, 150, 200, 0.3);
+  color: rgba(255, 255, 255, 0.65);
 }
+.reselectBtn:hover { color: #ffffff; }
 
 .runBtnStart {
-  background: rgba(0, 160, 80, 0.88);
-  color: #fff;
-  border-color: rgba(0, 220, 100, 0.4);
-  box-shadow: 0 0 14px rgba(0, 200, 80, 0.35);
+  color: rgba(255, 255, 255, 0.65);
+  border-color: rgba(255, 89, 0, 0.3);
 }
+.runBtnStart:hover { color: #ff5900; }
 
 .runBtnStop {
-  background: rgba(200, 50, 20, 0.88);
-  color: #fff;
-  border-color: rgba(255, 80, 40, 0.4);
-  box-shadow: 0 0 14px rgba(220, 60, 20, 0.35);
+  color: #ff5900;
+  border-color: rgba(255, 89, 0, 0.45);
+  background: rgba(255, 89, 0, 0.1);
+}
+.runBtnStop:hover {
+  background: rgba(255, 89, 0, 0.15);
 }

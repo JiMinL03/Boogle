@@ -11,6 +11,7 @@ const ROUTE_COLOR = {
   'korea-ras-laffan': '#F44336',
   'korea-qalhat':     '#FF5722',
   'korea-europe':     '#9C27B0',
+  'korea-rotterdam':  '#00BCD4',
 }
 
 export default function RouteSelect({ onConfirm }) {

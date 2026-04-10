@@ -4,58 +4,65 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 200;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(255, 102, 0, 0.22);
-  border-bottom: 2.5px solid var(--orange);
-  border-radius: 14px;
-  padding: 9px 24px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.05) 45%,
+    rgba(255, 255, 255, 0.09) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50px;
+  padding: 10px 22px;
   display: flex;
   align-items: center;
-  gap: 20px;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22), 0 0 16px rgba(255, 102, 0, 0.08);
+  gap: 6px;
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 40px rgba(255, 255, 255, 0.03);
   white-space: nowrap;
+}
+
+.bar > .item + .item::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  margin-right: 6px;
+  vertical-align: middle;
 }
 
 .item {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  color: #3A3A3A;
+  gap: 6px;
 }
 
 .key {
-  border-radius: 7px;
-  padding: 3px 10px;
+  border-radius: 50px;
+  padding: 3px 11px;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
+  background: rgba(255, 89, 0, 0.18);
+  border: 1px solid rgba(255, 89, 0, 0.4);
+  color: #ff5900;
 }
 
 .desc {
-  color: rgba(58, 58, 58, 0.55);
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
 }
 
-.orange {
-  background: rgba(255, 102,  0, 0.12);
-  border: 1px solid rgba(255, 102,  0, 0.35);
-  color: #CC4400;
-}
-.blue {
-  background: rgba(255, 140, 40, 0.10);
-  border: 1px solid rgba(255, 140, 40, 0.30);
-  color: #B35A00;
-}
-.teal {
-  background: rgba(255, 180, 80, 0.09);
-  border: 1px solid rgba(255, 160, 40, 0.25);
-  color: #994400;
-}
-.yellow {
-  background: rgba(255, 200, 100, 0.08);
-  border: 1px solid rgba(220, 140, 20, 0.22);
-  color: #7A3A00;
+.orange, .blue, .teal, .yellow {
+  background: rgba(255, 89, 0, 0.18);
+  border: 1px solid rgba(255, 89, 0, 0.4);
+  color: #ff5900;
 }
