@@ -45,11 +45,17 @@ function fmtTime(d) {
 }
 
 // ────────────────────────────────────────────────────────────
-export default function SidePanel({ routeId, shipPosition, coords, isRunning }) {
+export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning }) {
   const route  = ROUTES.find(r => r.id === routeId)
   const distKm = route ? Math.round(routeDistanceKm(route.coords)) : null
   const distNm = distKm ? Math.round(distKm / 1.852) : null
   const eta    = distNm ? (distNm / 16 / 24).toFixed(1) : null
+
+  // 항로 표시명: reversed 여부와 항구명 반영
+  const port      = koreanPort ?? '한국'
+  const routeLabel = route
+    ? (reversed ? `${route.dest_ko} → ${port}` : `${port} → ${route.dest_ko}`)
+    : null
 
   const sp = shipPosition
 
@@ -103,7 +109,7 @@ export default function SidePanel({ routeId, shipPosition, coords, isRunning }) 
       {route && (
         <section className={styles.section}>
           <div className={styles.sectionLabel}>항로</div>
-          <div className={styles.routeName}>{route.name_ko}</div>
+          <div className={styles.routeName}>{routeLabel}</div>
           <div className={styles.distRow}>
             <Stat num={distKm?.toLocaleString()} unit="km" />
             <span className={styles.dot}>·</span>

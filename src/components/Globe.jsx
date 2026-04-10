@@ -4,10 +4,12 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { WAYPOINTS } from '../data/waypoints'
 import { ROUTES }    from '../data/routes'
 
-// routes.js 좌표 [lon, lat] → {lon, lat} 변환
-function routeWaypoints(routeId) {
+// routes.js 좌표 [lon, lat] → {lon, lat} 변환 (reversed=true면 경로 뒤집기)
+function routeWaypoints(routeId, reversed = false) {
   const route = ROUTES.find(r => r.id === routeId)
-  return route ? route.coords.map(([lon, lat]) => ({ lon, lat })) : null
+  if (!route) return null
+  const coords = reversed ? [...route.coords].reverse() : route.coords
+  return coords.map(([lon, lat]) => ({ lon, lat }))
 }
 import { COLOR, MAPBOX_TOKEN } from '../constants/colors'
 
@@ -84,12 +86,14 @@ function calcBearingDeg(lon1, lat1, lon2, lat2) {
 }
 
 // ── Globe 컴포넌트 ────────────────────────────────────────
-export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, routeId, isRunning }) {
+export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, routeId, reversed, isRunning }) {
   const containerRef  = useRef(null)
   const mapRef        = useRef(null)
   // 자동 항행 웨이포인트 큐 (외부에서 설정 → animate 루프에서 소비)
   const autoRouteRef  = useRef(null) // { waypoints: [{lon,lat},...], wpIdx: 0 }
+  const shipResetRef  = useRef(null) // { lon, lat } — 설정되면 다음 프레임에서 선박 위치 초기화
   const routeIdRef    = useRef(routeId)   // 최신 routeId를 load 클로저에서 참조
+  const reversedRef   = useRef(reversed)  // 최신 reversed 상태
   const isRunningRef  = useRef(isRunning) // 최신 isRunning을 animate 클로저에서 참조
 
   // 콜백 ref (map.on('load') 내부 클로저에서 최신 함수 참조 유지)
@@ -101,19 +105,24 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
   useEffect(() => { shipPosCbRef.current  = onShipPosition  }, [onShipPosition])
   useEffect(() => { isRunningRef.current  = isRunning       }, [isRunning])
 
-  // routeId 변경 → 자동 항행 설정 + 해당 항로 레이어만 표시
+  // routeId 또는 reversed 변경 → 자동 항행 설정 + 선박 위치 초기화 + 해당 항로 레이어 표시
   useEffect(() => {
-    routeIdRef.current = routeId
-    const wps = routeWaypoints(routeId)
+    routeIdRef.current  = routeId
+    reversedRef.current = reversed
+
+    const wps = routeWaypoints(routeId, reversed)
     if (!wps || wps.length < 2) { autoRouteRef.current = null; return }
+
     autoRouteRef.current = { waypoints: wps, wpIdx: 0 }
+    // 선박을 경로 시작점으로 리셋 (reversed=true면 원래 경로의 마지막 좌표)
+    shipResetRef.current = { lon: wps[0].lon, lat: wps[0].lat }
 
     const map = mapRef.current
     if (!map?.isStyleLoaded()) return
     ROUTES.forEach(r => {
       map.setLayoutProperty(`route-${r.id}`, 'visibility', r.id === routeId ? 'visible' : 'none')
     })
-  }, [routeId])
+  }, [routeId, reversed])
 
   // Mapbox 초기화 (한 번만)
   useEffect(() => {
@@ -371,6 +380,18 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
       // ── 애니메이션 루프: 실거리(m) 기반 이동 ─────────────
       function animate() {
         rafId = requestAnimationFrame(animate)
+
+        // 선박 위치 리셋 요청 처리 (경로 변경 / 방향 전환 시)
+        if (shipResetRef.current) {
+          const { lon, lat } = shipResetRef.current
+          ship.lon   = lon
+          ship.lat   = lat
+          target.lon = lon
+          target.lat = lat
+          wake.length = 0
+          wake.push([lon, lat])
+          shipResetRef.current = null
+        }
 
         // deltaTime: 프레임 간 경과 시간(초), 최대 0.1s 클램프(탭 복귀 등 대비)
         const now        = performance.now()

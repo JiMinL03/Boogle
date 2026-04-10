@@ -8,6 +8,8 @@ import styles from './App.module.css'
 export default function App() {
   const [page,         setPage]         = useState('select')
   const [routeId,      setRouteId]      = useState(null)
+  const [reversed,     setReversed]     = useState(false)
+  const [koreanPort,   setKoreanPort]   = useState('평택터미널')
   const [coords,       setCoords]       = useState(null)
   const [onLand,       setOnLand]       = useState(false)
   const [shipPosition, setShipPosition] = useState(null)
@@ -22,7 +24,7 @@ export default function App() {
       .catch(() => {})
   }, [])
 
-  const handleConfirm      = useCallback((id) => { setRouteId(id); setPage('map'); setIsRunning(false) }, [])
+  const handleConfirm      = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false) }, [])
   const handleReselect     = useCallback(() => { setIsRunning(false); setPage('select') }, [])
   const handleCoordsChange = useCallback(setCoords,       [])
   const handleLandWarning  = useCallback(setOnLand,       [])
@@ -37,6 +39,7 @@ export default function App() {
         onLandWarning={handleLandWarning}
         onShipPosition={handleShipPosition}
         routeId={routeId}
+        reversed={reversed}
         isRunning={isRunning}
       />
 
@@ -44,6 +47,8 @@ export default function App() {
 
       <SidePanel
         routeId={routeId}
+        reversed={reversed}
+        koreanPort={koreanPort}
         shipPosition={shipPosition}
         coords={coords}
         isRunning={isRunning}
