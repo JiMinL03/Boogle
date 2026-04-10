@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { ROUTES } from '../data/routes'
 import styles from './RouteSelect.module.css'
+import AnimatedLogo from '../components/AnimatedLogo'
+import koreaFlag from '../assets/korea.png'
 
 const ROUTE_COLOR = {
   'korea-bintulo':    '#2196F3',
@@ -36,9 +38,8 @@ export default function RouteSelect({ onConfirm }) {
 
   return (
     <div className={styles.page}>
-      {/* 배경 */}
-      <div className={styles.bg} />
-
+      {/* 왼쪽: 카드 */}
+      <div className={styles.left}>
       <div className={styles.card}>
         {/* 로고 */}
         <div className={styles.logo}>
@@ -48,7 +49,7 @@ export default function RouteSelect({ onConfirm }) {
             </span>
           ))}
         </div>
-        <p className={styles.subtitle}>Maritime Route Explorer</p>
+        <p className={styles.subtitle}>Ocean DX Academy 최강3기</p>
 
         {/* 항로 선택 폼 */}
         <div className={styles.form}>
@@ -56,7 +57,7 @@ export default function RouteSelect({ onConfirm }) {
           <div className={styles.portBox}>
             <span className={styles.portLabel}>출항</span>
             <div className={styles.portFixed}>
-              <span className={styles.portFlag}>🇰🇷</span>
+              <img src={koreaFlag} alt="한국" className={styles.portFlag} />
               <div>
                 <div className={styles.portName}>한국</div>
                 <div className={styles.portSub}>평택 LNG 터미널</div>
@@ -102,6 +103,12 @@ export default function RouteSelect({ onConfirm }) {
         >
           {loading ? '처리 중…' : '길 찾기'}
         </button>
+      </div>
+      </div>
+
+      {/* 오른쪽: 애니메이션 로고 */}
+      <div className={styles.right}>
+        <AnimatedLogo />
       </div>
     </div>
   )
