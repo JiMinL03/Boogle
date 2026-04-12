@@ -445,6 +445,8 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
             }
             // wpIdx 동기화: 현재 위치 이후 첫 웨이포인트로 맞춤
             if (autoRouteRef.current) autoRouteRef.current.wpIdx = pos.wpIdx
+            // isRunning 여부와 무관하게 위치 전송 (기상 수집 등에 활용)
+            shipPosCbRef.current?.({ lat: pos.lat, lon: pos.lon, heading, moving: false, knots: 16 })
           }
         }
 

@@ -141,7 +141,7 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
   const fetching  = useRef(false)
 
   useEffect(() => {
-    if (!isRunning || !sp || fetching.current) return
+    if ((!isRunning && scrubSeconds === 0) || !sp || fetching.current) return
     if (Date.now() - lastFetch.current < INTERVAL) return
 
     const now = Date.now()
@@ -172,7 +172,7 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
       })
       .catch(e => setError(e.message))
       .finally(() => { setLoading(false); fetching.current = false })
-  }, [sp, isRunning])
+  }, [sp, isRunning, scrubSeconds])
 
   const latest = logs[0]
   const isScrubbing     = scrubSeconds > 0 && scrubActiveRef.current
