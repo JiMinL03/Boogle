@@ -1,3 +1,14 @@
+/* ── 좌측 패널 컨테이너 ─────────────────────────────────── */
+.leftPanels {
+  position: fixed;
+  top: 72px;
+  left: 20px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .landWarning {
   position: fixed;
   top: 50%;

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import Globe from './components/Globe'
 import ControlsHint from './components/ControlsHint'
 import SidePanel from './components/SidePanel'
+import EnginePanel from './components/EnginePanel'
 import RouteSelect from './pages/RouteSelect'
 import styles from './App.module.css'
 
@@ -16,6 +17,7 @@ export default function App() {
   const [isRunning,    setIsRunning]    = useState(false)
   const [voyageKey,    setVoyageKey]    = useState(0)
   const [scrubSeconds, setScrubSeconds] = useState(0)
+  const [elapsedMs,    setElapsedMs]    = useState(0)
 
   useEffect(() => {
     fetch('/api/route')
@@ -26,7 +28,7 @@ export default function App() {
       .catch(() => {})
   }, [])
 
-  const handleConfirm      = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageKey(k => k + 1); setScrubSeconds(0) }, [])
+  const handleConfirm      = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0) }, [])
   const handleReselect     = useCallback(() => { setIsRunning(false); setPage('select') }, [])
   const handleCoordsChange = useCallback(setCoords,       [])
   const handleLandWarning  = useCallback(setOnLand,       [])
@@ -48,17 +50,25 @@ export default function App() {
 
       <ControlsHint />
 
-      <SidePanel
-        routeId={routeId}
-        reversed={reversed}
-        koreanPort={koreanPort}
-        shipPosition={shipPosition}
-        coords={coords}
-        isRunning={isRunning}
-        voyageKey={voyageKey}
-        scrubSeconds={scrubSeconds}
-        onScrubChange={setScrubSeconds}
-      />
+      <div className={styles.leftPanels}>
+        <SidePanel
+          routeId={routeId}
+          reversed={reversed}
+          koreanPort={koreanPort}
+          shipPosition={shipPosition}
+          coords={coords}
+          isRunning={isRunning}
+          voyageKey={voyageKey}
+          scrubSeconds={scrubSeconds}
+          onScrubChange={setScrubSeconds}
+          onElapsedChange={setElapsedMs}
+        />
+        <EnginePanel
+          routeId={routeId}
+          elapsedMs={elapsedMs}
+          isRunning={isRunning}
+        />
+      </div>
 
       {onLand && (
         <div className={styles.landWarning}>

@@ -12,6 +12,7 @@ function routeWaypoints(routeId, reversed = false) {
   return coords.map(([lon, lat]) => ({ lon, lat }))
 }
 import { COLOR, MAPBOX_TOKEN } from '../constants/colors'
+import { SHIP } from '../constants/ship'
 
 // ── 선박 상공(탑뷰) 아이콘 Canvas 생성 ──────────────────
 function makeShipCanvas() {
@@ -389,7 +390,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
       // ── 선박 속도 상수 (16 knots) ──────────────────────────
       // 1 knot = 1 해리/h = 1852 m/h
       // TIME_SCALE: 줌 레벨에 따라 동적으로 결정 (줌아웃=빠름, 줌인=느림)
-      const SHIP_KNOTS    = 16
+      const SHIP_KNOTS    = SHIP.knots
       const SPEED_MS      = SHIP_KNOTS * 1852 / 3600  // ≈ 8.231 m/s
       const M_PER_DEG_LAT = 111320                    // 위도 1° = 111,320 m (고정)
       // 줌 ≤5 → 1000배속, 줌 ≥15 → 1배속, 사이는 로그 보간
@@ -428,7 +429,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
           prevScrubRef.current = scrubSecondsRef.current
           const wps = autoRouteRef.current?.waypoints
           if (wps && wps.length >= 2 && scrubSecondsRef.current > 0) {
-            const KNOTS    = 16
+            const KNOTS    = SHIP.knots
             const targetNm = KNOTS * scrubSecondsRef.current / 3600
             const targetM  = targetNm * 1852
             const pos      = posAtDistM(wps, targetM)

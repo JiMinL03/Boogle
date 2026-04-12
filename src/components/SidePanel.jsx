@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { ROUTES } from '../data/routes'
+import { SHIP }   from '../constants/ship'
 import styles from './SidePanel.module.css'
 
 // ── 거리 계산 ────────────────────────────────────────────────
@@ -54,12 +55,12 @@ function fmtTime(d) {
 }
 
 // ────────────────────────────────────────────────────────────
-export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageKey, scrubSeconds, onScrubChange }) {
+export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageKey, scrubSeconds, onScrubChange, onElapsedChange }) {
   const route  = ROUTES.find(r => r.id === routeId)
   const distKm = route ? Math.round(routeDistanceKm(route.coords)) : null
   const distNm = distKm ? Math.round(distKm / 1.852) : null
-  const eta    = distNm ? (distNm / 16 / 24).toFixed(1) : null
-  const totalVoyageSeconds = distNm ? Math.round(distNm / 16 * 3600) : 0
+  const eta    = distNm ? (distNm / SHIP.knots / 24).toFixed(1) : null
+  const totalVoyageSeconds = distNm ? Math.round(distNm / SHIP.knots * 3600) : 0
 
   // 항로 표시명: reversed 여부와 항구명 반영
   const port      = koreanPort ?? '한국'
@@ -82,6 +83,9 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
   // 슬라이더를 직접 움직인 상태인지 추적 (라이브 카운트와 구분)
   const scrubActiveRef = useRef(false)
 
+  // elapsedMs 변경 시 App으로 전파 (EnginePanel 등에서 활용)
+  useEffect(() => { onElapsedChange?.(elapsedMs) }, [elapsedMs, onElapsedChange])
+
   // 새 항해 확정 시 초기화
   useEffect(() => {
     setElapsedMs(0)
@@ -98,7 +102,7 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
       // 탐색 위치에서 시작하는 경우 해당 값으로 초기화
       if (scrubSeconds > 0) {
         accumulatedMsRef.current  = scrubSeconds * 1000
-        traveledKmRef.current     = 16 * scrubSeconds / 3600 * 1.852
+        traveledKmRef.current     = SHIP.knots * scrubSeconds / 3600 * 1.852
         prevPosRef.current        = null
         setTraveledKm(traveledKmRef.current)
       }
@@ -176,8 +180,8 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
 
   const latest = logs[0]
   const isScrubbing     = scrubSeconds > 0 && scrubActiveRef.current
-  const scrubKm         = isScrubbing ? 16 * scrubSeconds / 3600 * 1.852 : traveledKm
-  const scrubNm         = isScrubbing ? 16 * scrubSeconds / 3600         : traveledKm / 1.852
+  const scrubKm         = isScrubbing ? SHIP.knots * scrubSeconds / 3600 * 1.852 : traveledKm
+  const scrubNm         = isScrubbing ? SHIP.knots * scrubSeconds / 3600         : traveledKm / 1.852
   const displayMs       = isScrubbing ? scrubSeconds * 1000 : elapsedMs
   const hasVoyageData   = elapsedMs > 0 || traveledKm > 0 || isScrubbing
 
@@ -194,7 +198,7 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
             <span className={styles.dot}>·</span>
             <Stat num={distNm?.toLocaleString()} unit="해리" />
             <span className={styles.dot}>·</span>
-            <Stat num={`~${eta}`} unit="일 (16kt)" />
+            <Stat num={`~${eta}`} unit={`일 (${SHIP.knots}kt)`} />
           </div>
         </section>
       )}
@@ -240,7 +244,7 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
                 if (isRunning) {
                   // 항해 중 탐색: 해당 위치부터 라이브 카운트 즉시 재시작
                   accumulatedMsRef.current = val * 1000
-                  traveledKmRef.current    = 16 * val / 3600 * 1.852
+                  traveledKmRef.current    = SHIP.knots * val / 3600 * 1.852
                   if (runningStartRef.current !== null) runningStartRef.current = Date.now()
                   prevPosRef.current = null
                   setTraveledKm(traveledKmRef.current)
