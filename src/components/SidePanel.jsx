@@ -40,7 +40,7 @@ function fmtElapsed(ms) {
 
 // ── 기상 API ─────────────────────────────────────────────────
 const API_KEY    = 'e3387311caed12676c89e7c4796e3f0f'
-const INTERVAL   = 3000
+const INTERVAL   = 1500
 const MAX_LOGS   = 20
 
 async function fetchWeather(lat, lon) {
@@ -54,11 +54,12 @@ function fmtTime(d) {
 }
 
 // ────────────────────────────────────────────────────────────
-export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageKey }) {
+export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageKey, scrubSeconds, onScrubChange }) {
   const route  = ROUTES.find(r => r.id === routeId)
   const distKm = route ? Math.round(routeDistanceKm(route.coords)) : null
   const distNm = distKm ? Math.round(distKm / 1.852) : null
   const eta    = distNm ? (distNm / 16 / 24).toFixed(1) : null
+  const totalVoyageSeconds = distNm ? Math.round(distNm / 16 * 3600) : 0
 
   // 항로 표시명: reversed 여부와 항구명 반영
   const port      = koreanPort ?? '한국'
@@ -78,6 +79,9 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
   const prevPosRef    = useRef(null)
   const traveledKmRef = useRef(0)
 
+  // 슬라이더를 직접 움직인 상태인지 추적 (라이브 카운트와 구분)
+  const scrubActiveRef = useRef(false)
+
   // 새 항해 확정 시 초기화
   useEffect(() => {
     setElapsedMs(0)
@@ -91,6 +95,14 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
   // 경과 시간 타이머 (시작/중단에 따라 누적)
   useEffect(() => {
     if (isRunning) {
+      // 탐색 위치에서 시작하는 경우 해당 값으로 초기화
+      if (scrubSeconds > 0) {
+        accumulatedMsRef.current  = scrubSeconds * 1000
+        traveledKmRef.current     = 16 * scrubSeconds / 3600 * 1.852
+        prevPosRef.current        = null
+        setTraveledKm(traveledKmRef.current)
+      }
+      scrubActiveRef.current = false  // 시작 시 스크럽 모드 해제 → 라이브 카운트 표시
       runningStartRef.current = Date.now()
       const id = setInterval(() => {
         setElapsedMs(accumulatedMsRef.current + (Date.now() - runningStartRef.current))
@@ -163,7 +175,11 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
   }, [sp, isRunning])
 
   const latest = logs[0]
-  const hasVoyageData = elapsedMs > 0 || traveledKm > 0
+  const isScrubbing     = scrubSeconds > 0 && scrubActiveRef.current
+  const scrubKm         = isScrubbing ? 16 * scrubSeconds / 3600 * 1.852 : traveledKm
+  const scrubNm         = isScrubbing ? 16 * scrubSeconds / 3600         : traveledKm / 1.852
+  const displayMs       = isScrubbing ? scrubSeconds * 1000 : elapsedMs
+  const hasVoyageData   = elapsedMs > 0 || traveledKm > 0 || isScrubbing
 
   return (
     <div className={styles.panel}>
@@ -186,18 +202,58 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
       <div className={styles.divider} />
 
       {/* ── 항해 현황 ── */}
-      {hasVoyageData && (
+      {route && (
         <>
           <section className={styles.section}>
             <div className={styles.sectionLabel}>
               항해 현황
-              {isRunning && <span className={styles.liveDot} />}
+              {isRunning && !isScrubbing && <span className={styles.liveDot} />}
+              {isScrubbing && <span className={styles.scrubLabel}>탐색 중</span>}
             </div>
-            <div className={styles.voyageTime}>{fmtElapsed(elapsedMs)}</div>
-            <div className={styles.distRow}>
-              <Stat num={traveledKm.toFixed(1)} unit="km" />
-              <span className={styles.dot}>·</span>
-              <Stat num={(traveledKm / 1.852).toFixed(1)} unit="해리" />
+
+            {hasVoyageData && (
+              <>
+                <div className={styles.voyageTimeRow}>
+                  <span className={styles.voyageTime}>{fmtElapsed(displayMs)}</span>
+                  {displayMs >= 86400000 && (
+                    <span className={styles.voyageDays}>{Math.floor(displayMs / 86400000)}일</span>
+                  )}
+                </div>
+                <div className={styles.distRow}>
+                  <Stat num={scrubKm.toFixed(1)} unit="km" />
+                  <span className={styles.dot}>·</span>
+                  <Stat num={scrubNm.toFixed(1)} unit="해리" />
+                </div>
+              </>
+            )}
+
+            <input
+              type="range"
+              className={styles.scrubber}
+              min={0}
+              max={totalVoyageSeconds}
+              step={60}
+              value={scrubSeconds}
+              onChange={e => {
+                const val = Number(e.target.value)
+                onScrubChange(val)
+                if (isRunning) {
+                  // 항해 중 탐색: 해당 위치부터 라이브 카운트 즉시 재시작
+                  accumulatedMsRef.current = val * 1000
+                  traveledKmRef.current    = 16 * val / 3600 * 1.852
+                  if (runningStartRef.current !== null) runningStartRef.current = Date.now()
+                  prevPosRef.current = null
+                  setTraveledKm(traveledKmRef.current)
+                  setElapsedMs(accumulatedMsRef.current)
+                  scrubActiveRef.current = false
+                } else {
+                  scrubActiveRef.current = true
+                }
+              }}
+            />
+            <div className={styles.scrubTicks}>
+              <span>출발</span>
+              <span>{eta}일</span>
             </div>
           </section>
           <div className={styles.divider} />

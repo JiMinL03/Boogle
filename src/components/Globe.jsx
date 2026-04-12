@@ -75,6 +75,33 @@ function makeShipCanvas() {
   return canvas
 }
 
+// ── 항로 거리 기반 위치 보간 ──────────────────────────────
+function haversineM(lon1, lat1, lon2, lat2) {
+  const R  = 6371000
+  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180
+  const Δφ = (lat2 - lat1) * Math.PI / 180
+  const Δλ = (lon2 - lon1) * Math.PI / 180
+  const a  = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+function posAtDistM(waypoints, targetM) {
+  let acc = 0
+  for (let i = 1; i < waypoints.length; i++) {
+    const d = haversineM(waypoints[i-1].lon, waypoints[i-1].lat, waypoints[i].lon, waypoints[i].lat)
+    if (acc + d >= targetM) {
+      const t = (targetM - acc) / d
+      return {
+        lon: waypoints[i-1].lon + t * (waypoints[i].lon - waypoints[i-1].lon),
+        lat: waypoints[i-1].lat + t * (waypoints[i].lat - waypoints[i-1].lat),
+        wpIdx: i,
+      }
+    }
+    acc += d
+  }
+  const last = waypoints[waypoints.length - 1]
+  return { lon: last.lon, lat: last.lat, wpIdx: waypoints.length - 1 }
+}
+
 // ── 방위각 계산 (북쪽=0, 시계방향 도(°)) ────────────────
 function calcBearingDeg(lon1, lat1, lon2, lat2) {
   const φ1 = lat1 * Math.PI / 180
@@ -86,7 +113,7 @@ function calcBearingDeg(lon1, lat1, lon2, lat2) {
 }
 
 // ── Globe 컴포넌트 ────────────────────────────────────────
-export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, routeId, reversed, isRunning }) {
+export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, routeId, reversed, isRunning, scrubSeconds }) {
   const containerRef  = useRef(null)
   const mapRef        = useRef(null)
   // 자동 항행 웨이포인트 큐 (외부에서 설정 → animate 루프에서 소비)
@@ -95,6 +122,8 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
   const routeIdRef    = useRef(routeId)   // 최신 routeId를 load 클로저에서 참조
   const reversedRef   = useRef(reversed)  // 최신 reversed 상태
   const isRunningRef  = useRef(isRunning) // 최신 isRunning을 animate 클로저에서 참조
+  const scrubSecondsRef = useRef(scrubSeconds)
+  const prevScrubRef    = useRef(scrubSeconds)
 
   // 콜백 ref (map.on('load') 내부 클로저에서 최신 함수 참조 유지)
   const coordsCbRef   = useRef(onCoordsChange)
@@ -103,7 +132,8 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
   useEffect(() => { coordsCbRef.current   = onCoordsChange  }, [onCoordsChange])
   useEffect(() => { landWarnCbRef.current = onLandWarning   }, [onLandWarning])
   useEffect(() => { shipPosCbRef.current  = onShipPosition  }, [onShipPosition])
-  useEffect(() => { isRunningRef.current  = isRunning       }, [isRunning])
+  useEffect(() => { isRunningRef.current    = isRunning     }, [isRunning])
+  useEffect(() => { scrubSecondsRef.current = scrubSeconds  }, [scrubSeconds])
 
   // routeId 또는 reversed 변경 → 자동 항행 설정 + 선박 위치 초기화 + 해당 항로 레이어 표시
   useEffect(() => {
@@ -391,6 +421,31 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
           wake.length = 0
           wake.push([lon, lat])
           shipResetRef.current = null
+        }
+
+        // 스크럽 위치 변경 감지 → 항로 위 해당 거리로 선박 텔레포트
+        if (scrubSecondsRef.current !== prevScrubRef.current) {
+          prevScrubRef.current = scrubSecondsRef.current
+          const wps = autoRouteRef.current?.waypoints
+          if (wps && wps.length >= 2 && scrubSecondsRef.current > 0) {
+            const KNOTS    = 16
+            const targetNm = KNOTS * scrubSecondsRef.current / 3600
+            const targetM  = targetNm * 1852
+            const pos      = posAtDistM(wps, targetM)
+            ship.lon = pos.lon
+            ship.lat = pos.lat
+            target.lon = pos.lon
+            target.lat = pos.lat
+            wake.length = 0
+            wake.push([pos.lon, pos.lat])
+            // 방위각: 1해리 이전 지점 기준
+            if (targetM > 1852) {
+              const prev = posAtDistM(wps, targetM - 1852)
+              heading = calcBearingDeg(prev.lon, prev.lat, pos.lon, pos.lat)
+            }
+            // wpIdx 동기화: 현재 위치 이후 첫 웨이포인트로 맞춤
+            if (autoRouteRef.current) autoRouteRef.current.wpIdx = pos.wpIdx
+          }
         }
 
         // deltaTime: 프레임 간 경과 시간(초), 최대 0.1s 클램프(탭 복귀 등 대비)
