@@ -241,6 +241,7 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
               onChange={e => {
                 const val = Number(e.target.value)
                 onScrubChange(val)
+                onElapsedChange?.(val * 1000)   // 중단 상태에서도 EnginePanel 실시간 업데이트
                 if (isRunning) {
                   // 항해 중 탐색: 해당 위치부터 라이브 카운트 즉시 재시작
                   accumulatedMsRef.current = val * 1000
