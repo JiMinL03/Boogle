@@ -14,6 +14,7 @@ export default function App() {
   const [onLand,       setOnLand]       = useState(false)
   const [shipPosition, setShipPosition] = useState(null)
   const [isRunning,    setIsRunning]    = useState(false)
+  const [voyageKey,    setVoyageKey]    = useState(0)
 
   useEffect(() => {
     fetch('/api/route')
@@ -24,7 +25,7 @@ export default function App() {
       .catch(() => {})
   }, [])
 
-  const handleConfirm      = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false) }, [])
+  const handleConfirm      = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageKey(k => k + 1) }, [])
   const handleReselect     = useCallback(() => { setIsRunning(false); setPage('select') }, [])
   const handleCoordsChange = useCallback(setCoords,       [])
   const handleLandWarning  = useCallback(setOnLand,       [])
@@ -52,6 +53,7 @@ export default function App() {
         shipPosition={shipPosition}
         coords={coords}
         isRunning={isRunning}
+        voyageKey={voyageKey}
       />
 
       {onLand && (

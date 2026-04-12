@@ -366,7 +366,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
       function getTimeScale() {
         const zoom = map.getZoom()
         const ZOOM_MIN = 5, ZOOM_MAX = 15
-        const SCALE_MIN = 1, SCALE_MAX = 1
+        const SCALE_MIN = 1, SCALE_MAX = 1.27
         const t = Math.max(0, Math.min(1, (zoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN)))
         // 로그 보간: 시각적으로 자연스러운 배속 변화
         return SCALE_MAX * Math.pow(SCALE_MIN / SCALE_MAX, t)

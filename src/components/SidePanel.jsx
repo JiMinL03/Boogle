@@ -29,6 +29,15 @@ function degToDir(deg) {
   return DIRS[Math.round(((deg ?? 0) / 22.5)) % 16]
 }
 
+// ── 경과 시간 포맷 ───────────────────────────────────────────
+function fmtElapsed(ms) {
+  const s = Math.floor(ms / 1000)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+}
+
 // ── 기상 API ─────────────────────────────────────────────────
 const API_KEY    = 'e3387311caed12676c89e7c4796e3f0f'
 const INTERVAL   = 3000
@@ -45,7 +54,7 @@ function fmtTime(d) {
 }
 
 // ────────────────────────────────────────────────────────────
-export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning }) {
+export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageKey }) {
   const route  = ROUTES.find(r => r.id === routeId)
   const distKm = route ? Math.round(routeDistanceKm(route.coords)) : null
   const distNm = distKm ? Math.round(distKm / 1.852) : null
@@ -58,6 +67,59 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
     : null
 
   const sp = shipPosition
+
+  // 항해 경과 시간
+  const [elapsedMs,   setElapsedMs]   = useState(0)
+  const runningStartRef  = useRef(null)
+  const accumulatedMsRef = useRef(0)
+
+  // 항해 이동 거리
+  const [traveledKm,  setTraveledKm]  = useState(0)
+  const prevPosRef    = useRef(null)
+  const traveledKmRef = useRef(0)
+
+  // 새 항해 확정 시 초기화
+  useEffect(() => {
+    setElapsedMs(0)
+    setTraveledKm(0)
+    accumulatedMsRef.current = 0
+    traveledKmRef.current    = 0
+    runningStartRef.current  = null
+    prevPosRef.current       = null
+  }, [voyageKey])
+
+  // 경과 시간 타이머 (시작/중단에 따라 누적)
+  useEffect(() => {
+    if (isRunning) {
+      runningStartRef.current = Date.now()
+      const id = setInterval(() => {
+        setElapsedMs(accumulatedMsRef.current + (Date.now() - runningStartRef.current))
+      }, 1000)
+      return () => {
+        clearInterval(id)
+        if (runningStartRef.current !== null) {
+          accumulatedMsRef.current += Date.now() - runningStartRef.current
+          runningStartRef.current = null
+        }
+      }
+    } else {
+      setElapsedMs(accumulatedMsRef.current)
+    }
+  }, [isRunning])
+
+  // 이동 거리 누적
+  useEffect(() => {
+    if (!sp) return
+    if (!isRunning) { prevPosRef.current = null; return }
+    if (prevPosRef.current) {
+      const d = haversineKm(prevPosRef.current.lon, prevPosRef.current.lat, sp.lon, sp.lat)
+      if (d < 500) {
+        traveledKmRef.current += d
+        setTraveledKm(traveledKmRef.current)
+      }
+    }
+    prevPosRef.current = { lat: sp.lat, lon: sp.lon }
+  }, [sp, isRunning])
 
   // 기상 상태
   const [logs,    setLogs]    = useState([])
@@ -101,6 +163,7 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
   }, [sp, isRunning])
 
   const latest = logs[0]
+  const hasVoyageData = elapsedMs > 0 || traveledKm > 0
 
   return (
     <div className={styles.panel}>
@@ -121,6 +184,26 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
       )}
 
       <div className={styles.divider} />
+
+      {/* ── 항해 현황 ── */}
+      {hasVoyageData && (
+        <>
+          <section className={styles.section}>
+            <div className={styles.sectionLabel}>
+              항해 현황
+              {isRunning && <span className={styles.liveDot} />}
+            </div>
+            <div className={styles.voyageTime}>{fmtElapsed(elapsedMs)}</div>
+            <div className={styles.distRow}>
+              <Stat num={traveledKm.toFixed(1)} unit="km" />
+              <span className={styles.dot}>·</span>
+              <Stat num={(traveledKm / 1.852).toFixed(1)} unit="해리" />
+            </div>
+          </section>
+          <div className={styles.divider} />
+        </>
+      )}
+
 
       {/* ── 선박 정보 ── */}
       <section className={styles.section}>

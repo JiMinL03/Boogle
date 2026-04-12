@@ -82,6 +82,29 @@
   color: rgba(255, 255, 255, 0.2);
 }
 
+/* ── 항해 현황 ───────────────────────────────────────────── */
+.voyageTime {
+  font-size: 28px;
+  font-weight: 700;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  margin-bottom: 8px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff5900;
+  box-shadow: 0 0 6px rgba(255, 89, 0, 0.8);
+  animation: pulse 1.5s infinite;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
 /* ── 선박 ────────────────────────────────────────────────── */
 .coordRow {
   display: flex;
