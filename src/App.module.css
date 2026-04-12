@@ -105,3 +105,13 @@
 .runBtnStop:hover {
   background: rgba(255, 89, 0, 0.15);
 }
+
+.runBtnComplete {
+  color: #4caf7d;
+  border-color: rgba(76, 175, 125, 0.45);
+  background: rgba(76, 175, 125, 0.1);
+  cursor: default;
+}
+.runBtnComplete:hover {
+  background: rgba(76, 175, 125, 0.15);
+}

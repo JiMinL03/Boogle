@@ -14,10 +14,11 @@ export default function App() {
   const [coords,       setCoords]       = useState(null)
   const [onLand,       setOnLand]       = useState(false)
   const [shipPosition, setShipPosition] = useState(null)
-  const [isRunning,    setIsRunning]    = useState(false)
-  const [voyageKey,    setVoyageKey]    = useState(0)
-  const [scrubSeconds, setScrubSeconds] = useState(0)
-  const [elapsedMs,    setElapsedMs]    = useState(0)
+  const [isRunning,      setIsRunning]      = useState(false)
+  const [voyageComplete, setVoyageComplete] = useState(false)
+  const [voyageKey,      setVoyageKey]      = useState(0)
+  const [scrubSeconds,   setScrubSeconds]   = useState(0)
+  const [elapsedMs,      setElapsedMs]      = useState(0)
 
   useEffect(() => {
     fetch('/api/route')
@@ -28,11 +29,12 @@ export default function App() {
       .catch(() => {})
   }, [])
 
-  const handleConfirm      = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0) }, [])
-  const handleReselect     = useCallback(() => { setIsRunning(false); setPage('select') }, [])
-  const handleCoordsChange = useCallback(setCoords,       [])
-  const handleLandWarning  = useCallback(setOnLand,       [])
-  const handleShipPosition = useCallback(setShipPosition, [])
+  const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0) }, [])
+  const handleReselect       = useCallback(() => { setIsRunning(false); setVoyageComplete(false); setPage('select') }, [])
+  const handleCoordsChange   = useCallback(setCoords,       [])
+  const handleLandWarning    = useCallback(setOnLand,       [])
+  const handleShipPosition   = useCallback(setShipPosition, [])
+  const handleVoyageComplete = useCallback(() => { setIsRunning(false); setVoyageComplete(true) }, [])
 
   if (page === 'select') return <RouteSelect onConfirm={handleConfirm} />
 
@@ -42,6 +44,7 @@ export default function App() {
         onCoordsChange={handleCoordsChange}
         onLandWarning={handleLandWarning}
         onShipPosition={handleShipPosition}
+        onVoyageComplete={handleVoyageComplete}
         routeId={routeId}
         reversed={reversed}
         isRunning={isRunning}
@@ -81,10 +84,16 @@ export default function App() {
           항로 재선택
         </button>
         <button
-          className={`${styles.runBtn} ${isRunning ? styles.runBtnStop : styles.runBtnStart}`}
-          onClick={() => setIsRunning(r => !r)}
+          className={`${styles.runBtn} ${voyageComplete ? styles.runBtnComplete : isRunning ? styles.runBtnStop : styles.runBtnStart}`}
+          onClick={() => {
+            if (voyageComplete) {
+              alert('항해가 완료되었습니다. 항로를 재선택해 주세요.')
+              return
+            }
+            setIsRunning(r => !r)
+          }}
         >
-          {isRunning ? '■ 중단' : '▶ 시작'}
+          {voyageComplete ? '✓ 도착 완료' : isRunning ? '■ 중단' : '▶ 시작'}
         </button>
       </div>
     </>

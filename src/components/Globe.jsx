@@ -114,7 +114,7 @@ function calcBearingDeg(lon1, lat1, lon2, lat2) {
 }
 
 // ── Globe 컴포넌트 ────────────────────────────────────────
-export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, routeId, reversed, isRunning, scrubSeconds }) {
+export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, onVoyageComplete, routeId, reversed, isRunning, scrubSeconds }) {
   const containerRef  = useRef(null)
   const mapRef        = useRef(null)
   // 자동 항행 웨이포인트 큐 (외부에서 설정 → animate 루프에서 소비)
@@ -125,14 +125,17 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
   const isRunningRef  = useRef(isRunning) // 최신 isRunning을 animate 클로저에서 참조
   const scrubSecondsRef = useRef(scrubSeconds)
   const prevScrubRef    = useRef(scrubSeconds)
+  const voyageCompleteFiredRef = useRef(false) // 항해 완료 콜백 중복 방지
 
   // 콜백 ref (map.on('load') 내부 클로저에서 최신 함수 참조 유지)
-  const coordsCbRef   = useRef(onCoordsChange)
-  const landWarnCbRef = useRef(onLandWarning)
-  const shipPosCbRef  = useRef(onShipPosition)
-  useEffect(() => { coordsCbRef.current   = onCoordsChange  }, [onCoordsChange])
-  useEffect(() => { landWarnCbRef.current = onLandWarning   }, [onLandWarning])
-  useEffect(() => { shipPosCbRef.current  = onShipPosition  }, [onShipPosition])
+  const coordsCbRef        = useRef(onCoordsChange)
+  const landWarnCbRef      = useRef(onLandWarning)
+  const shipPosCbRef       = useRef(onShipPosition)
+  const voyageCompleteCbRef = useRef(onVoyageComplete)
+  useEffect(() => { coordsCbRef.current        = onCoordsChange   }, [onCoordsChange])
+  useEffect(() => { landWarnCbRef.current      = onLandWarning    }, [onLandWarning])
+  useEffect(() => { shipPosCbRef.current       = onShipPosition   }, [onShipPosition])
+  useEffect(() => { voyageCompleteCbRef.current = onVoyageComplete }, [onVoyageComplete])
   useEffect(() => { isRunningRef.current    = isRunning     }, [isRunning])
   useEffect(() => { scrubSecondsRef.current = scrubSeconds  }, [scrubSeconds])
 
@@ -145,6 +148,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
     if (!wps || wps.length < 2) { autoRouteRef.current = null; return }
 
     autoRouteRef.current = { waypoints: wps, wpIdx: 0 }
+    voyageCompleteFiredRef.current = false
     // 선박을 경로 시작점으로 리셋 (reversed=true면 원래 경로의 마지막 좌표)
     shipResetRef.current = { lon: wps[0].lon, lat: wps[0].lat }
 
@@ -397,7 +401,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
       function getTimeScale() {
         const zoom = map.getZoom()
         const ZOOM_MIN = 5, ZOOM_MAX = 15
-        const SCALE_MIN = 1, SCALE_MAX = 1.27
+        const SCALE_MIN = 1, SCALE_MAX = 1.26
         const t = Math.max(0, Math.min(1, (zoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN)))
         // 로그 보간: 시각적으로 자연스러운 배속 변화
         return SCALE_MAX * Math.pow(SCALE_MIN / SCALE_MAX, t)
@@ -484,6 +488,12 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
           if (distM < 1) {
             nextLon = ship.lon
             nextLat = ship.lat
+            // 마지막 웨이포인트에 도달해 정지 → 항해 완료
+            const arStop = autoRouteRef.current
+            if (arStop && arStop.wpIdx >= arStop.waypoints.length - 1 && !voyageCompleteFiredRef.current) {
+              voyageCompleteFiredRef.current = true
+              voyageCompleteCbRef.current?.()
+            }
           } else if (distM <= stepMeters) {
             nextLon = target.lon
             nextLat = target.lat
@@ -506,6 +516,11 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, r
             const wpDistM  = Math.sqrt(dWpLon_m ** 2 + dWpLat_m ** 2)
             if (wpDistM < stepMeters * 2) {
               ar2.wpIdx++
+              // 마지막 웨이포인트를 막 지났으면 항해 완료 처리
+              if (ar2.wpIdx >= ar2.waypoints.length && !voyageCompleteFiredRef.current) {
+                voyageCompleteFiredRef.current = true
+                voyageCompleteCbRef.current?.()
+              }
             }
           }
 
