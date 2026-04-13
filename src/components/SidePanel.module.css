@@ -63,7 +63,7 @@
 .statNum {
   font-size: 15px;
   font-weight: 700;
-  color: #ff5900;
+  color: #37aef3;
   font-variant-numeric: tabular-nums;
 }
 
@@ -109,8 +109,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #ff5900;
-  box-shadow: 0 0 6px rgba(255, 89, 0, 0.8);
+  background: #4385e9;
+  box-shadow: 0 0 6px #0d4497;
   animation: pulse 1.5s infinite;
   flex-shrink: 0;
   display: inline-block;
@@ -147,9 +147,9 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #ff5900;
+  background: #ffffff;
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(255, 89, 0, 0.7);
+  box-shadow: 0 0 8px #0f4bce;
   transition: transform 0.15s ease;
 }
 

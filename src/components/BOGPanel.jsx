@@ -154,7 +154,7 @@ export default function BOGPanel({ thermalData, sloshingData }) {
               <Cell label="Q 슬로싱"  val={Q_kinetic_kW.toFixed(1)}  unit="kW" accent />
               <Cell label="Q 합계"    val={current.Q_total}           unit="kW" />
               <Cell label="ΔH 보정"   val={current.dH}                unit="kJ/kg" />
-              <Cell label="탱크 압력"  val={`+${P_GAUGE_KPA}`}         unit="kPa" />
+              <Cell label="탱크압력"  val={`+${P_GAUGE_KPA}`}         unit="kPa" />
               <Cell label="슬로싱"    val={sloshingData ? (sloshingData.intensity * 100).toFixed(0) : '--'} unit="%" />
             </div>
           </>

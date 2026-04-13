@@ -57,15 +57,15 @@
 
 .heroDivider {
   width: 1px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 0, 0, 0.1);
   margin: 0 12px;
 }
 
-.heroLabel {
-  font-size: 9px;
+.heroLabel {  
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgb(182, 182, 182);
 }
 
 .heroVal {
@@ -100,10 +100,10 @@
 }
 
 .chartLabel {
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.22);
+  color: rgb(182, 182, 182);
   margin-bottom: 6px;
 }
 
@@ -116,11 +116,11 @@
 
 /* ── 블록 레이블 ── */
 .blockLabel {
-  font-size: 8px;
+  font-size:11px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.22);
+  color: rgb(182, 182, 182);
   margin-bottom: 6px;
 }
 
@@ -147,10 +147,10 @@
 }
 
 .cellLabel {
-  font-size: 7.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgb(182, 182, 182);
 }
 
 .cellVal {
@@ -160,7 +160,7 @@
 }
 
 .cellNum {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   color: #ffffff;
   font-variant-numeric: tabular-nums;
