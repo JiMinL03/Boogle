@@ -206,7 +206,7 @@ function BallastDiagram({ progressPct, remainingTon, expectedTon }) {
               fill="#0a1520" stroke="rgba(100,180,220,0.7)" strokeWidth="2.5" />
 
       {/* ── 중앙 수치 ── */}
-      <text x={TANK_CX} y={textCY - 20} textAnchor="middle" fill="#ff5900"
+      <text x={TANK_CX} y={textCY - 20} textAnchor="middle" fill="#ffffff"
             fontSize="52" fontWeight="700"
             fontFamily="'SF Mono','Fira Code','Consolas',monospace">
         {remainingTon != null ? remainingTon.toFixed(1) : '--'}

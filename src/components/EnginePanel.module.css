@@ -100,9 +100,9 @@
 }
 
 .rateUnit {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgb(182, 182, 182);;
 }
 
 .dot {
@@ -137,11 +137,11 @@
 }
 
 .cellLabel {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgb(182, 182, 182);;
 }
 
 .cellVal { display: flex; align-items: baseline; gap: 2px; }
@@ -160,8 +160,8 @@
 }
 
 .accent .cellNum,
-.accent { color: #ff5900; }
-.cell .accent { color: #ff5900; }
+.accent { color: #ffffff; }
+.cell .accent { color: #ffffff; }
 
 /* ── 진행률 바 ──────────────────────────────────────────── */
 .progressWrap {
