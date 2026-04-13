@@ -54,7 +54,9 @@ export default function ThermalPanel({ weather, onThermalChange }) {
       <div className={styles.panel}>
         <section className={styles.section}>
           <div className={styles.sectionLabel}>열유입 분석</div>
-          <div className={styles.empty}>기상 데이터 수집 후 계산됩니다</div>
+          <div className={styles.emptyBody}>
+            <div className={styles.empty}>기상 데이터 수집 후 계산됩니다</div>
+          </div>
         </section>
       </div>
     )

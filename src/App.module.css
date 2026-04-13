@@ -7,6 +7,10 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: calc(100vh - 84px);
+  overflow-y: auto;
+  overflow-x: visible;
+  padding-bottom: 52px;
 }
 
 .rightPanels {
@@ -17,6 +21,32 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: calc(100vh - 84px);
+  overflow-y: auto;
+  overflow-x: visible;
+  padding-bottom: 52px;
+}
+
+/* ── 커스텀 스크롤바 ─────────────────────────────────────── */
+.leftPanels::-webkit-scrollbar,
+.rightPanels::-webkit-scrollbar {
+  width: 3px;
+}
+
+.leftPanels::-webkit-scrollbar-track,
+.rightPanels::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.leftPanels::-webkit-scrollbar-thumb,
+.rightPanels::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+}
+
+.leftPanels::-webkit-scrollbar-thumb:hover,
+.rightPanels::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .landWarning {
@@ -45,6 +75,36 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translate(-50%, -48%); }
   to   { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+/* ── 패널 토글 버튼 ─────────────────────────────────────── */
+.toggleBtn {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 201;
+  width: 28px;
+  padding: 14px 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.05) 45%,
+    rgba(255, 255, 255, 0.09) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 14px;
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.4),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: left 0.3s ease, right 0.3s ease, color 0.15s, background 0.15s;
+  line-height: 1;
 }
 
 /* ── 하단 컨트롤 바 ─────────────────────────────────────── */

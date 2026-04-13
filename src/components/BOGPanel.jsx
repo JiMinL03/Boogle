@@ -77,6 +77,19 @@ export default function BOGPanel({ thermalData, sloshingData }) {
     ].join(' ')
   }
 
+  if (!current) {
+    return (
+      <div className={styles.panel}>
+        <section className={styles.section}>
+          <div className={styles.sectionLabel}>증발 가스 (BOG / BOR)</div>
+          <div className={styles.emptyBody}>
+            <div className={styles.empty}>기상 데이터 수집 후 계산됩니다</div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.panel}>
       <section className={styles.section}>
@@ -90,7 +103,7 @@ export default function BOGPanel({ thermalData, sloshingData }) {
             <span className={styles.heroLabel}>BOG</span>
             <div className={styles.heroVal}>
               <span className={styles.heroNum}>
-                {current ? current.bogKgHr.toFixed(1) : '--'}
+                {current.bogKgHr.toFixed(1)}
               </span>
               <span className={styles.heroUnit}>kg/hr</span>
             </div>
@@ -100,7 +113,7 @@ export default function BOGPanel({ thermalData, sloshingData }) {
             <span className={styles.heroLabel}>BOR</span>
             <div className={styles.heroVal}>
               <span className={styles.heroNum} style={{ color: borRisk }}>
-                {current ? current.bor.toFixed(4) : '--'}
+                {current.bor.toFixed(4)}
               </span>
               <span className={styles.heroUnit}>%/day</span>
             </div>
@@ -145,24 +158,16 @@ export default function BOGPanel({ thermalData, sloshingData }) {
         </div>
 
         {/* ── 입력 파라미터 ── */}
-        {current && (
-          <>
-            <div className={styles.divider} />
-            <div className={styles.blockLabel}>입력 파라미터</div>
-            <div className={styles.grid}>
-              <Cell label="Q 열유입"   val={Q_thermal_kW.toFixed(1)} unit="kW" />
-              <Cell label="Q 슬로싱"  val={Q_kinetic_kW.toFixed(1)}  unit="kW" accent />
-              <Cell label="Q 합계"    val={current.Q_total}           unit="kW" />
-              <Cell label="ΔH 보정"   val={current.dH}                unit="kJ/kg" />
-              <Cell label="탱크압력"  val={`+${P_GAUGE_KPA}`}         unit="kPa" />
-              <Cell label="슬로싱"    val={sloshingData ? (sloshingData.intensity * 100).toFixed(0) : '--'} unit="%" />
-            </div>
-          </>
-        )}
-
-        {!current && (
-          <div className={styles.empty}>기상 데이터 수집 후 계산됩니다</div>
-        )}
+        <div className={styles.divider} />
+        <div className={styles.blockLabel}>입력 파라미터</div>
+        <div className={styles.grid}>
+          <Cell label="Q 열유입"   val={Q_thermal_kW.toFixed(1)} unit="kW" />
+          <Cell label="Q 슬로싱"  val={Q_kinetic_kW.toFixed(1)}  unit="kW" accent />
+          <Cell label="Q 합계"    val={current.Q_total}           unit="kW" />
+          <Cell label="ΔH 보정"   val={current.dH}                unit="kJ/kg" />
+          <Cell label="탱크압력"  val={`+${P_GAUGE_KPA}`}         unit="kPa" />
+          <Cell label="슬로싱"    val={sloshingData ? (sloshingData.intensity * 100).toFixed(0) : '--'} unit="%" />
+        </div>
 
       </section>
     </div>

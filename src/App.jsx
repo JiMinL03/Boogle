@@ -25,6 +25,8 @@ export default function App() {
   const [latestWeather,  setLatestWeather]  = useState(null)
   const [thermalData,    setThermalData]    = useState(null)
   const [sloshingData,   setSloshingData]   = useState(null)
+  const [leftVisible,    setLeftVisible]    = useState(true)
+  const [rightVisible,   setRightVisible]   = useState(true)
 
   useEffect(() => {
     fetch('/api/route')
@@ -36,8 +38,8 @@ export default function App() {
   }, [])
 
   const handleWeatherChange  = useCallback(setLatestWeather, [])
-  const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0) }, [])
-  const handleReselect       = useCallback(() => { setIsRunning(false); setVoyageComplete(false); setPage('select') }, [])
+  const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0); setLatestWeather(null); setThermalData(null); setSloshingData(null) }, [])
+  const handleReselect       = useCallback(() => { setIsRunning(false); setVoyageComplete(false); setLatestWeather(null); setThermalData(null); setSloshingData(null); setPage('select') }, [])
   const handleCoordsChange   = useCallback(setCoords,       [])
   const handleLandWarning    = useCallback(setOnLand,       [])
   const handleShipPosition   = useCallback(setShipPosition, [])
@@ -60,32 +62,54 @@ export default function App() {
 
       <ControlsHint />
 
-      <div className={styles.leftPanels}>
-        <SidePanel
-          routeId={routeId}
-          reversed={reversed}
-          koreanPort={koreanPort}
-          shipPosition={shipPosition}
-          coords={coords}
-          isRunning={isRunning}
-          voyageKey={voyageKey}
-          scrubSeconds={scrubSeconds}
-          onScrubChange={setScrubSeconds}
-          onElapsedChange={setElapsedMs}
-          onWeatherChange={handleWeatherChange}
-        />
-        <EnginePanel
-          routeId={routeId}
-          elapsedMs={elapsedMs}
-          isRunning={isRunning}
-        />
-      </div>
+      {leftVisible && (
+        <div className={styles.leftPanels} style={voyageComplete ? { overflowY: 'hidden' } : undefined}>
+          <SidePanel
+            routeId={routeId}
+            reversed={reversed}
+            koreanPort={koreanPort}
+            shipPosition={shipPosition}
+            coords={coords}
+            isRunning={isRunning}
+            voyageKey={voyageKey}
+            scrubSeconds={scrubSeconds}
+            onScrubChange={setScrubSeconds}
+            onElapsedChange={setElapsedMs}
+            onWeatherChange={handleWeatherChange}
+          />
+          <EnginePanel
+            routeId={routeId}
+            elapsedMs={elapsedMs}
+            isRunning={isRunning}
+          />
+        </div>
+      )}
 
-      <div className={styles.rightPanels}>
-        <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
-        <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} />
-        <BOGPanel thermalData={thermalData} sloshingData={sloshingData} />
-      </div>
+      <button
+        className={styles.toggleBtn}
+        style={{ left: leftVisible ? '315px' : '13px' }}
+        onClick={() => setLeftVisible(v => !v)}
+        title={leftVisible ? '왼쪽 패널 숨기기' : '왼쪽 패널 보이기'}
+      >
+        :
+      </button>
+
+      {rightVisible && (
+        <div className={styles.rightPanels} style={voyageComplete ? { overflowY: 'hidden' } : undefined}>
+          <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
+          <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} />
+          <BOGPanel thermalData={thermalData} sloshingData={sloshingData} />
+        </div>
+      )}
+
+      <button
+        className={styles.toggleBtn}
+        style={{ right: rightVisible ? '270px' : '13px' }}
+        onClick={() => setRightVisible(v => !v)}
+        title={rightVisible ? '오른쪽 패널 숨기기' : '오른쪽 패널 보이기'}
+      >
+        :
+      </button>
 
       {onLand && (
         <div className={styles.landWarning}>

@@ -75,6 +75,19 @@ export default function SloshingPanel({ weather, onSloshingChange }) {
     return () => cancelAnimationFrame(rafRef.current)
   }, [s.intensity])
 
+  if (!weather) {
+    return (
+      <div className={styles.panel}>
+        <section className={styles.section}>
+          <div className={styles.sectionLabel}>슬로싱 분석</div>
+          <div className={styles.emptyBody}>
+            <div className={styles.empty}>기상 데이터 수집 후 계산됩니다</div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
   // ── 액면 계산 ──────────────────────────────────────────
   const waveAmp    = 1.5 + s.intensity * 20         // 파고 (SVG units)
   const rollRad    = s.rollDeg * Math.PI / 180
