@@ -19,7 +19,7 @@ function correctedLHV() {
 // ── BOG 계산 ──────────────────────────────────────────────
 // Input: Q_total (kW, from ThermalPanel) + Q_kinetic (kW, from SloshingPanel)
 function calcBOG(Q_thermal_kW, Q_kinetic_kW) {
-  const Q_total_W  = (Q_thermal_kW + Q_kinetic_kW) * 1_000   // W
+  const Q_total_W  = (Q_thermal_kW + Q_kinetic_kW) * 1_000   // W (kW 단위를 W로 변환)
   const dH_Jkg     = correctedLHV() * 1_000                  // J/kg
   const bogKgPerS  = Q_total_W / dH_Jkg
   const bogKgPerHr = bogKgPerS * 3_600
@@ -36,7 +36,7 @@ const MAX_HISTORY = 60
 const CHART_W = 228
 const CHART_H = 60
 
-export default function BOGPanel({ thermalData, sloshingData }) {
+export default function BOGPanel({ thermalData, sloshingData, onBOGChange }) {
   const [history, setHistory] = useState([])
   const prevThermalRef = useRef(null)
 
@@ -51,6 +51,10 @@ export default function BOGPanel({ thermalData, sloshingData }) {
     prevThermalRef.current = thermalData
     setHistory(prev => [...prev, { bog: current.bogKgHr }].slice(-MAX_HISTORY))
   }, [thermalData])
+
+  useEffect(() => {
+    onBOGChange?.(current)
+  }, [Q_thermal_kW, Q_kinetic_kW])
 
   const borRisk = current
     ? current.bor < 0.10 ? '#4caf7d'

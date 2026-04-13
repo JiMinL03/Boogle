@@ -7,11 +7,15 @@ const CT_TOP     = 14
 const CT_BOTTOM  = 180
 const CT_CX      = 140     // 탱크 중심 x
 
-const FILL_FRAC = 0.98       // 출항 초기 충전율 98% — Full Condition (low sloshing)
+const FILL_FRAC_INITIAL = 0.98   // 출항 초기 충전율 98% — Full Condition (low sloshing)
 
-const TANK_H = CT_BOTTOM - CT_TOP          // 166
-const FILL_H = TANK_H * FILL_FRAC          // ~162.7
-const BASE_Y = CT_BOTTOM - FILL_H          // ~17.3 (정지 시 액면 y)
+const TANK_H = CT_BOTTOM - CT_TOP   // 166
+
+// ── LNG 질량 상수 (BOG 충진율 계산용) ─────────────────────
+const LNG_VOL_M3      = 174_000            // m³
+const RHO_LNG         = 430               // kg/m³
+const LNG_MASS_T      = LNG_VOL_M3 * RHO_LNG / 1000          // 74,820 tonnes
+const TOTAL_CAPACITY_T = LNG_MASS_T / FILL_FRAC_INITIAL       // ~76,347.96 tonnes
 
 // ── 충전율 → 슬로싱 위험 계수 ────────────────────────────
 // 물리적 근거:
@@ -30,7 +34,7 @@ function fillFactor(f) {
 
 // ── 슬로싱 계산 ───────────────────────────────────────────
 // Q_Sloshing = f(Wave Height, Wind Speed, Filling Limit)
-function calcSloshing(weather) {
+function calcSloshing(weather, fillFrac) {
   const v    = parseFloat(weather?.windSpeed) || 0
   const vg   = parseFloat(weather?.windGust)  || v
   const vMax = Math.max(v, vg)
@@ -41,7 +45,7 @@ function calcSloshing(weather) {
   // 횡동요각 근사 (LNG선 고유주기 ~20s)
   const rollDeg = Math.min(Hs * 2.5, 18)         // °
 
-  const intensity = Math.min((rollDeg / 18) * fillFactor(FILL_FRAC), 1)
+  const intensity = Math.min((rollDeg / 18) * fillFactor(fillFrac), 1)
 
   let risk, riskColor
   if      (intensity < 0.15) { risk = '안전'; riskColor = '#4caf7d' }
@@ -53,14 +57,29 @@ function calcSloshing(weather) {
 }
 
 // ── 컴포넌트 ──────────────────────────────────────────────
-export default function SloshingPanel({ weather, onSloshingChange }) {
-  const [phase, setPhase] = useState(0)
-  const phaseRef          = useRef(0)
-  const rafRef            = useRef(null)
+export default function SloshingPanel({ weather, onSloshingChange, bogData, elapsedMs }) {
+  const [phase, setPhase]               = useState(0)
+  const [currentMassT, setCurrentMassT] = useState(LNG_MASS_T)
+  const phaseRef                        = useRef(0)
+  const rafRef                          = useRef(null)
+  const prevElapsedRef                  = useRef(0)
 
-  const s = calcSloshing(weather)
+  // BOG 기반 질량 감소 → 충진율 재계산 (시뮬레이션 경과 시간 기준)
+  // 계산식: (현재LNG질량 - ((BOG/1000) * 경과시간)) / (현재LNG질량 / 현재충진율) * 100
+  useEffect(() => {
+    if (!bogData?.bogKgHr || !elapsedMs) return
+    const deltaMs = elapsedMs - prevElapsedRef.current
+    if (deltaMs <= 0) return
+    prevElapsedRef.current = elapsedMs
+    const deltaHours = deltaMs / 3_600_000
+    setCurrentMassT(prev => Math.max(prev - (bogData.bogKgHr / 1000) * deltaHours, 0))
+  }, [elapsedMs])
 
-  useEffect(() => { onSloshingChange?.(s) }, [weather])
+  const currentFillFrac = currentMassT / TOTAL_CAPACITY_T
+
+  const s = calcSloshing(weather, currentFillFrac)
+
+  useEffect(() => { onSloshingChange?.(s) }, [weather, currentFillFrac])
 
   // 애니메이션 루프 — intensity가 바뀌면 속도 재설정
   useEffect(() => {
@@ -89,13 +108,16 @@ export default function SloshingPanel({ weather, onSloshingChange }) {
   }
 
   // ── 액면 계산 ──────────────────────────────────────────
-  const waveAmp    = 1.5 + s.intensity * 20         // 파고 (SVG units)
-  const rollRad    = s.rollDeg * Math.PI / 180
-  const curRoll    = rollRad * Math.sin(phase * 0.45)  // 주기적 횡동요
+  const fillH   = TANK_H * currentFillFrac          // 동적 충진 높이
+  const baseY   = CT_BOTTOM - fillH                 // 동적 액면 기준 y
 
-  // y(x) = BASE_Y + tilt(x) + wave(x)
+  const waveAmp = 1.5 + s.intensity * 20            // 파고 (SVG units)
+  const rollRad = s.rollDeg * Math.PI / 180
+  const curRoll = rollRad * Math.sin(phase * 0.45)  // 주기적 횡동요
+
+  // y(x) = baseY + tilt(x) + wave(x)
   const surfY = (x) =>
-    BASE_Y
+    baseY
     + (x - CT_CX) * Math.tan(curRoll)
     + waveAmp * Math.sin(phase + (x - CT_CX) * 0.045)
 
@@ -134,7 +156,7 @@ export default function SloshingPanel({ weather, onSloshingChange }) {
         <div className={styles.grid}>
           <Cell label="유의파고 Hs" val={s.Hs}                           unit="m" />
           <Cell label="횡동요각"    val={s.rollDeg}                      unit="°" />
-          <Cell label="충전율"      val={(FILL_FRAC * 100).toFixed(1)}   unit="%" />
+          <Cell label="충진율"      val={(currentFillFrac * 100).toFixed(1)}   unit="%" />
           <Cell label="슬로싱 강도" val={(s.intensity * 100).toFixed(0)} unit="%"
                 color={s.intensity > 0.15 ? s.riskColor : undefined} />
         </div>
@@ -203,7 +225,7 @@ export default function SloshingPanel({ weather, onSloshingChange }) {
           <text x="140" y="88" textAnchor="middle"
                 fill="rgb(255, 255, 255)" fontSize="26" fontWeight="800"
                 fontFamily="'SF Mono','Fira Code','Consolas',monospace">
-            78,300
+            {Math.round(currentMassT).toLocaleString()}
           </text>
           <text x="140" y="106" textAnchor="middle"
                 fill="rgba(180,225,255,0.55)" fontSize="11" fontWeight="600" letterSpacing="1">
@@ -213,7 +235,7 @@ export default function SloshingPanel({ weather, onSloshingChange }) {
           {/* 충전율 텍스트 */}
           <text x="140" y="148" textAnchor="middle"
                 fill="rgba(255,255,255,0.3)" fontSize="9" fontWeight="700" letterSpacing="2">
-            {(FILL_FRAC * 100).toFixed(0)}% FILLED
+            {(currentFillFrac * 100).toFixed(0)}% FILLED
           </text>
           <text x="140" y="172" textAnchor="middle"
                 fill="rgba(100,180,220,0.25)" fontSize="7" fontWeight="700" letterSpacing="3">

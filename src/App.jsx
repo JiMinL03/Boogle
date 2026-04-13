@@ -25,6 +25,7 @@ export default function App() {
   const [latestWeather,  setLatestWeather]  = useState(null)
   const [thermalData,    setThermalData]    = useState(null)
   const [sloshingData,   setSloshingData]   = useState(null)
+  const [bogData,        setBogData]        = useState(null)
   const [leftVisible,    setLeftVisible]    = useState(true)
   const [rightVisible,   setRightVisible]   = useState(true)
 
@@ -38,8 +39,8 @@ export default function App() {
   }, [])
 
   const handleWeatherChange  = useCallback(setLatestWeather, [])
-  const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0); setLatestWeather(null); setThermalData(null); setSloshingData(null) }, [])
-  const handleReselect       = useCallback(() => { setIsRunning(false); setVoyageComplete(false); setLatestWeather(null); setThermalData(null); setSloshingData(null); setPage('select') }, [])
+  const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null) }, [])
+  const handleReselect       = useCallback(() => { setIsRunning(false); setVoyageComplete(false); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null); setPage('select') }, [])
   const handleCoordsChange   = useCallback(setCoords,       [])
   const handleLandWarning    = useCallback(setOnLand,       [])
   const handleShipPosition   = useCallback(setShipPosition, [])
@@ -97,8 +98,8 @@ export default function App() {
       {rightVisible && (
         <div className={styles.rightPanels} style={voyageComplete ? { overflowY: 'hidden' } : undefined}>
           <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
-          <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} />
-          <BOGPanel thermalData={thermalData} sloshingData={sloshingData} />
+          <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={voyageKey} />
+          <BOGPanel thermalData={thermalData} sloshingData={sloshingData} onBOGChange={setBogData} />
         </div>
       )}
 
