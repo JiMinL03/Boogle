@@ -1,10 +1,8 @@
+import { useEffect } from 'react'
 import styles from './ThermalPanel.module.css'
 
 // ── LNG 탱크 물성 상수 ─────────────────────────────────────
 const LNG_TEMP  = -162        // °C (LNG 저장온도, 대기압 비점)
-const LNG_VOL   = 174_000     // m³ (카고 용량)
-const RHO_LNG   = 430         // kg/m³ (LNG 밀도)
-const LHV_LNG   = 509_000     // kJ/kg (기화잠열)
 
 // ── 탱크 표면적 (막식 탱크 4기 기준) ─────────────────────
 const A_TOP    = 7_500        // m²  상부 (대기 노출)
@@ -35,26 +33,23 @@ function calcThermal(weather) {
   const Q_side   = U_SIDE   * A_SIDE   * dT_air
   const Q_bottom = U_BOTTOM * A_BOTTOM * dT_sea
 
-  const Q_total    = Q_top + Q_side + Q_bottom   // W
-
-  // BOR (Boil-Off Rate, %/day)
-  const lngMassKg  = LNG_VOL * RHO_LNG                     // kg
-  const evapKgPerS = Q_total / (LHV_LNG * 1_000)           // kg/s
-  const bor        = (evapKgPerS * 86_400 / lngMassKg) * 100 // %/day
-
-  // BOG (Boil-Off Gas, m³/day)
-  const bog        = evapKgPerS * 86_400 / RHO_LNG          // m³/day
+  const Q_total = Q_top + Q_side + Q_bottom   // W
 
   return {
     dT_air: validAir ? dT_air : null,
     dT_sea: validSea ? dT_sea : null,
     Q_top, Q_side, Q_bottom, Q_total,
-    bor, bog,
   }
 }
 
-export default function ThermalPanel({ weather }) {
-  if (!weather) {
+export default function ThermalPanel({ weather, onThermalChange }) {
+  const r = weather ? calcThermal(weather) : null
+
+  useEffect(() => {
+    if (r) onThermalChange?.(r)
+  }, [weather])
+
+  if (!r) {
     return (
       <div className={styles.panel}>
         <section className={styles.section}>
@@ -64,8 +59,6 @@ export default function ThermalPanel({ weather }) {
       </div>
     )
   }
-
-  const r = calcThermal(weather)
 
   return (
     <div className={styles.panel}>
@@ -104,14 +97,6 @@ export default function ThermalPanel({ weather }) {
           <Cell label="LNG 온도"  val={LNG_TEMP} unit="°C" />
         </div>
 
-        <div className={styles.divider} />
-
-        {/* ── BOG / BOR ── */}
-        <div className={styles.blockLabel}>증발 가스</div>
-        <div className={styles.grid3}>
-          <Cell label="BOR" val={r.bor.toFixed(4)} unit="%/day" highlight />
-          <Cell label="BOG" val={Math.round(r.bog).toLocaleString()} unit="m³/day" />
-        </div>
 
       </section>
     </div>

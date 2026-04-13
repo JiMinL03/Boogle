@@ -63,9 +63,9 @@
 
 /* ── 헤더 레이블 ─────────────────────────────────────────── */
 .sectionLabel {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #ff5900;
   margin-bottom: 8px;
@@ -101,8 +101,8 @@
 
 .rateUnit {
   font-size: 9px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.35);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .dot {
@@ -141,7 +141,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .cellVal { display: flex; align-items: baseline; gap: 2px; }
@@ -155,8 +155,8 @@
 
 .cellUnit {
   font-size: 9px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.28);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .accent .cellNum,
@@ -189,7 +189,7 @@
 .progressLabel {
   font-size: 9px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.55);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }

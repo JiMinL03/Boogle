@@ -53,12 +53,14 @@ function calcSloshing(weather) {
 }
 
 // ── 컴포넌트 ──────────────────────────────────────────────
-export default function SloshingPanel({ weather }) {
+export default function SloshingPanel({ weather, onSloshingChange }) {
   const [phase, setPhase] = useState(0)
   const phaseRef          = useRef(0)
   const rafRef            = useRef(null)
 
   const s = calcSloshing(weather)
+
+  useEffect(() => { onSloshingChange?.(s) }, [weather])
 
   // 애니메이션 루프 — intensity가 바뀌면 속도 재설정
   useEffect(() => {
@@ -183,8 +185,19 @@ export default function SloshingPanel({ weather }) {
           {/* 탱크 테두리 */}
           <path d={CARGO_TANK} fill="none" stroke="#3a7ab0" strokeWidth="1.5" />
 
+          {/* 카고 용량 (탱크 내부, 액면 위에 겹침) */}
+          <text x="140" y="88" textAnchor="middle"
+                fill="rgb(255, 255, 255)" fontSize="26" fontWeight="800"
+                fontFamily="'SF Mono','Fira Code','Consolas',monospace">
+            78,300
+          </text>
+          <text x="140" y="106" textAnchor="middle"
+                fill="rgba(180,225,255,0.55)" fontSize="11" fontWeight="600" letterSpacing="1">
+            ton
+          </text>
+
           {/* 충전율 텍스트 */}
-          <text x="140" y="134" textAnchor="middle"
+          <text x="140" y="148" textAnchor="middle"
                 fill="rgba(255,255,255,0.3)" fontSize="9" fontWeight="700" letterSpacing="2">
             {(FILL_FRAC * 100).toFixed(0)}% FILLED
           </text>

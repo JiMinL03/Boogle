@@ -5,6 +5,7 @@ import SidePanel from './components/SidePanel'
 import EnginePanel from './components/EnginePanel'
 import ThermalPanel from './components/ThermalPanel'
 import SloshingPanel from './components/SloshingPanel'
+import BOGPanel from './components/BOGPanel'
 import RouteSelect from './pages/RouteSelect'
 import styles from './App.module.css'
 
@@ -22,6 +23,8 @@ export default function App() {
   const [scrubSeconds,   setScrubSeconds]   = useState(0)
   const [elapsedMs,      setElapsedMs]      = useState(0)
   const [latestWeather,  setLatestWeather]  = useState(null)
+  const [thermalData,    setThermalData]    = useState(null)
+  const [sloshingData,   setSloshingData]   = useState(null)
 
   useEffect(() => {
     fetch('/api/route')
@@ -79,8 +82,9 @@ export default function App() {
       </div>
 
       <div className={styles.rightPanels}>
-        <ThermalPanel weather={latestWeather} />
-        <SloshingPanel weather={latestWeather} />
+        <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
+        <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} />
+        <BOGPanel thermalData={thermalData} sloshingData={sloshingData} />
       </div>
 
       {onLand && (

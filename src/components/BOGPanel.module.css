@@ -21,7 +21,7 @@
   user-select: none;
 }
 
-.section { padding: 13px 16px; }
+.section { padding: 13px 16px 16px; }
 
 .divider {
   height: 1px;
@@ -33,49 +33,85 @@
 .sectionLabel {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #ff5900;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  margin-bottom: 10px;
 }
 
+/* ── 핵심 수치 ── */
+.heroRow {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 12px;
+}
 
-/* ── Q_Total ── */
-.totalRow {
+.heroBlock {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heroDivider {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 12px;
+}
+
+.heroLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.heroVal {
   display: flex;
   align-items: baseline;
-  gap: 3px;
-  margin-bottom: 4px;
+  gap: 4px;
 }
 
-.totalLabel {
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.5);
-  font-style: italic;
-}
-
-.sub {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.3);
-  margin-right: 4px;
-}
-
-.totalVal {
-  font-size: 26px;
-  font-weight: 700;
+.heroNum {
+  font-size: 20px;
+  font-weight: 800;
   color: #ffffff;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  line-height: 1;
+  transition: color 0.4s;
 }
 
-.totalUnit {
+.heroUnit {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.55);
-  margin-left: 2px;
+  font-weight: 600;
+}
+
+/* ── 차트 ── */
+.chartWrap {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 8px 10px 6px;
+  margin-bottom: 2px;
+}
+
+.chartLabel {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.22);
+  margin-bottom: 6px;
+}
+
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
 }
 
 /* ── 블록 레이블 ── */
@@ -84,23 +120,15 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.22);
   margin-bottom: 6px;
 }
 
-/* ── 데이터 그리드 ── */
+/* ── 그리드 ── */
 .grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 5px;
-  margin-bottom: 2px;
-}
-
-.grid3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
-  margin-bottom: 2px;
 }
 
 .cell {
@@ -109,22 +137,20 @@
     rgba(255, 255, 255, 0.08) 0%,
     rgba(255, 255, 255, 0.03) 100%
   );
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  padding: 7px 9px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .cellLabel {
-  font-size: 8px;
+  font-size: 7.5px;
   font-weight: 600;
-  letter-spacing: 0.03em;
-  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .cellVal {
@@ -134,22 +160,19 @@
 }
 
 .cellNum {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   color: #ffffff;
   font-variant-numeric: tabular-nums;
 }
 
 .cellUnit {
-  font-size: 8px;
-  font-weight: 600;
+  font-size: 7px;
+  font-weight: 500;
   color: rgba(255, 255, 255, 0.5);
 }
 
-/* ── 강조 색상 ── */
-.accent    { color: #4ab0e8 !important; }   /* 해수 열유입 - 파란 계열 */
-.solar     { color: #ffcc44 !important; }   /* 태양열 - 노란 계열 */
-.highlight { color: #ff5900 !important; }   /* BOR - 주황 */
+.accent { color: #4ab0e8; }
 
 /* ── 비어있을 때 ── */
 .empty {

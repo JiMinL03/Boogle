@@ -25,9 +25,9 @@
 
 /* ── 헤더 ── */
 .sectionLabel {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #ff5900;
   margin-bottom: 8px;
@@ -75,7 +75,7 @@
   font-size: 8px;
   font-weight: 600;
   letter-spacing: 0.03em;
-  color: rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .cellVal {
@@ -94,6 +94,6 @@
 
 .cellUnit {
   font-size: 8px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.28);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
 }

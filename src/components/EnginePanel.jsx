@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { ROUTES } from '../data/routes'
 import { SHIP }   from '../constants/ship'
 import styles from './EnginePanel.module.css'
@@ -21,7 +20,6 @@ function routeDistanceKm(coords) {
 }
 
 export default function EnginePanel({ routeId, elapsedMs, isRunning }) {
-  const [tab, setTab] = useState('fuel')
 
   const route  = ROUTES.find(r => r.id === routeId)
   const distNm = route ? routeDistanceKm(route.coords) / 1.852 : null
@@ -40,68 +38,47 @@ export default function EnginePanel({ routeId, elapsedMs, isRunning }) {
     <div className={styles.panel}>
       <section className={styles.section}>
 
-        {/* ── 탭 헤더 ── */}
-        <div className={styles.tabRow}>
-          <button
-            className={`${styles.tab} ${tab === 'fuel' ? styles.tabActive : ''}`}
-            onClick={() => setTab('fuel')}
-          >
-            연료
-          </button>
-          <button
-            className={`${styles.tab} ${tab === 'cargo' ? styles.tabActive : ''}`}
-            onClick={() => setTab('cargo')}
-          >
-            Cargo
-          </button>
-          {tab === 'fuel' && isRunning && <span className={styles.liveDot} />}
+        {/* ── 헤더 ── */}
+        <div className={styles.sectionLabel}>
+          엔진 소모량
+          {isRunning && <span className={styles.liveDot} />}
         </div>
 
-        {/* ══ 연료 탭 ══ */}
-        {tab === 'fuel' && (
+        <div className={styles.rateRow}>
+          <span className={styles.rateNum}>{SHIP.fuelTonPerHour}</span>
+          <span className={styles.rateUnit}>ton/hr</span>
+          <span className={styles.dot}>·</span>
+          <span className={styles.rateNum}>{SHIP.fuelTonPerDay.toFixed(1)}</span>
+          <span className={styles.rateUnit}>ton/day</span>
+        </div>
+
+        {hasData && (
           <>
-            <div className={styles.rateRow}>
-              <span className={styles.rateNum}>{SHIP.fuelTonPerHour}</span>
-              <span className={styles.rateUnit}>ton/hr</span>
-              <span className={styles.dot}>·</span>
-              <span className={styles.rateNum}>{SHIP.fuelTonPerDay.toFixed(1)}</span>
-              <span className={styles.rateUnit}>ton/day</span>
+            <div className={styles.divider} />
+            <div className={styles.grid}>
+              <Cell label="현재 소모량"   val={consumedTon.toFixed(1)}            unit="ton" accent />
+              {expectedTon != null && <Cell label="예상 총 소모량" val={expectedTon.toFixed(1)} unit="ton" />}
             </div>
-
-            {hasData && (
-              <>
-                <div className={styles.divider} />
-                <div className={styles.grid}>
-                  <Cell label="현재 소모량"   val={consumedTon.toFixed(1)}            unit="ton" accent />
-                  {expectedTon != null && <Cell label="예상 총 소모량" val={expectedTon.toFixed(1)} unit="ton" />}
+            {expectedTon != null && (
+              <div className={styles.progressWrap}>
+                <div className={styles.progressBar}>
+                  <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
                 </div>
-                {expectedTon != null && (
-                  <div className={styles.progressWrap}>
-                    <div className={styles.progressBar}>
-                      <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
-                    </div>
-                    <span className={styles.progressLabel}>{progressPct.toFixed(1)}% 소모</span>
-                  </div>
-                )}
-              </>
+                <span className={styles.progressLabel}>{progressPct.toFixed(1)}% 소모</span>
+              </div>
             )}
-
-            {!hasData && (
-              <div className={styles.empty}>항해 시작 후 실시간으로 계산됩니다</div>
-            )}
-
-            <BallastDiagram
-              progressPct={progressPct}
-              remainingTon={hasData ? remainingTon : null}
-              expectedTon={expectedTon}
-            />
           </>
         )}
 
-        {/* ══ Cargo 탭 ══ */}
-        {tab === 'cargo' && (
-          <CargoDiagram />
+        {!hasData && (
+          <div className={styles.empty}>항해 시작 후 실시간으로 계산됩니다</div>
         )}
+
+        <BallastDiagram
+          progressPct={progressPct}
+          remainingTon={hasData ? remainingTon : null}
+          expectedTon={expectedTon}
+        />
 
       </section>
     </div>
@@ -252,73 +229,6 @@ function BallastDiagram({ progressPct, remainingTon, expectedTon }) {
   )
 }
 
-// ── Cargo 탱크 (비대칭 팔각형) ────────────────────────────
-const CARGO_TANK   = "M 62,14 L 218,14 L 276,58 L 276,148 L 248,180 L 32,180 L 4,148 L 4,58 Z"
-const CT_TOP       = 14
-const CT_BOTTOM    = 180
-const CARGO_TOTAL  = 78_300   // ton
-
-function CargoDiagram() {
-  const tankH  = CT_BOTTOM - CT_TOP   // 166
-
-  return (
-    <div style={{ marginTop: 10 }}>
-      {/* ── 카고 정보 ── */}
-      <div className={styles.grid} style={{ marginBottom: 10 }}>
-        <Cell label="카고 용량" val={CARGO_TOTAL.toLocaleString()} unit="ton" />
-        <Cell label="카고 상태" val="만재" accent />
-      </div>
-
-      {/* ── 탱크 다이어그램 ── */}
-      <svg viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg"
-           style={{ width: '100%', height: 'auto', display: 'block' }}>
-        <defs>
-          <clipPath id="cargoClip">
-            <path d={CARGO_TANK} />
-          </clipPath>
-          <linearGradient id="cargoGrad" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%"   stopColor="#0d4a7a" stopOpacity="1"    />
-            <stop offset="60%"  stopColor="#1a7abf" stopOpacity="0.92" />
-            <stop offset="100%" stopColor="#4ab0e8" stopOpacity="0.75" />
-          </linearGradient>
-          <linearGradient id="cargoBodyGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"   stopColor="rgba(30,100,180,0.22)" />
-            <stop offset="50%"  stopColor="rgba(100,180,240,0.06)" />
-            <stop offset="100%" stopColor="rgba(30,100,180,0.22)" />
-          </linearGradient>
-        </defs>
-
-        {/* 탱크 배경 */}
-        <path d={CARGO_TANK} fill="#060d14" stroke="#2a5a80" strokeWidth="1.5" />
-
-        {/* 카고 fill (만재 = 100%) */}
-        <rect x="0" y={CT_TOP} width="280" height={tankH + 8}
-              fill="url(#cargoGrad)" clipPath="url(#cargoClip)" />
-
-        {/* 광택 오버레이 */}
-        <path d={CARGO_TANK} fill="url(#cargoBodyGrad)" clipPath="url(#cargoClip)" />
-
-        {/* 탱크 테두리 */}
-        <path d={CARGO_TANK} fill="none" stroke="#3a7ab0" strokeWidth="1.5" />
-
-        {/* 중앙 수치 */}
-        <text x="140" y="96" textAnchor="middle" fill="#4ab0e8"
-              fontSize="22" fontWeight="700"
-              fontFamily="'SF Mono','Fira Code','Consolas',monospace">
-          {CARGO_TOTAL.toLocaleString()}
-        </text>
-        <text x="140" y="112" textAnchor="middle"
-              fill="rgba(255,255,255,0.32)" fontSize="9">ton 만재</text>
-
-        {/* 라벨 */}
-        <text x="140" y="170" textAnchor="middle"
-              fill="rgba(100,180,220,0.3)" fontSize="8" fontWeight="700" letterSpacing="2">
-          CARGO TANK
-        </text>
-      </svg>
-    </div>
-  )
-}
 
 function Cell({ label, val, unit, accent }) {
   return (
