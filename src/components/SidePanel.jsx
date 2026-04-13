@@ -319,7 +319,6 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
               <Cell label="외기온도"  val={latest.temp}      unit="°C"  />
               <Cell label="체감온도"  val={latest.feelsLike} unit="°C"  />
               <Cell label="습도"      val={latest.humidity}  unit="%"   />
-              <Cell label="기압"      val={latest.pressure}  unit="hPa" />
               <Cell label="풍속"      val={latest.windSpeed} unit="m/s" />
               <Cell
                 label="풍향"
