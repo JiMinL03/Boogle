@@ -63,7 +63,7 @@ export default function App() {
       <ControlsHint />
 
       {leftVisible && (
-        <div className={styles.leftPanels} style={voyageComplete ? { overflowY: 'hidden' } : undefined}>
+        <div className={styles.leftPanels} style={voyageComplete ? { overflow: 'hidden', pointerEvents: 'none' } : undefined}>
           <SidePanel
             routeId={routeId}
             reversed={reversed}
