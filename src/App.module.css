@@ -89,34 +89,39 @@
   to   { opacity: 1; transform: translate(-50%, -50%); }
 }
 
-/* ── 패널 토글 버튼 ─────────────────────────────────────── */
-.toggleBtn {
+/* ── 패널 토글 탭 ────────────────────────────────────────── */
+.toggleTab {
   position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 20px;
   z-index: 201;
-  width: 28px;
-  padding: 14px 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.14) 0%,
-    rgba(255, 255, 255, 0.05) 45%,
-    rgba(255, 255, 255, 0.09) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 14px;
-  backdrop-filter: blur(28px) saturate(200%);
-  -webkit-backdrop-filter: blur(28px) saturate(200%);
-  box-shadow:
-    0 8px 28px rgba(0, 0, 0, 0.4),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.45);
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  width: 20px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
   cursor: pointer;
-  transition: left 0.3s ease, right 0.3s ease, color 0.15s, background 0.15s;
+  transition: background 0.2s, color 0.2s, left 0.3s ease, right 0.3s ease;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 10px;
   line-height: 1;
+  padding: 0;
+}
+
+.toggleTabLeft {
+  border-radius: 0 8px 8px 0;
+  border-left: none;
+}
+
+.toggleTabRight {
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+}
+
+.toggleTab:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* ── 하단 컨트롤 바 ─────────────────────────────────────── */

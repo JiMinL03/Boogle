@@ -86,12 +86,12 @@ export default function App() {
       )}
 
       <button
-        className={styles.toggleBtn}
-        style={{ left: leftVisible ? '315px' : '13px' }}
+        className={`${styles.toggleTab} ${styles.toggleTabLeft}`}
+        style={{ left: leftVisible ? '305px' : '0px' }}
         onClick={() => setLeftVisible(v => !v)}
         title={leftVisible ? '왼쪽 패널 숨기기' : '왼쪽 패널 보이기'}
       >
-        :
+        {leftVisible ? '‹' : '›'}
       </button>
 
       {rightVisible && (
@@ -103,12 +103,12 @@ export default function App() {
       )}
 
       <button
-        className={styles.toggleBtn}
-        style={{ right: rightVisible ? '330px' : '13px' }}
+        className={`${styles.toggleTab} ${styles.toggleTabRight}`}
+        style={{ right: rightVisible ? '325px' : '0px' }}
         onClick={() => setRightVisible(v => !v)}
         title={rightVisible ? '오른쪽 패널 숨기기' : '오른쪽 패널 보이기'}
       >
-        :
+        {rightVisible ? '›' : '‹'}
       </button>
 
       {onLand && (
