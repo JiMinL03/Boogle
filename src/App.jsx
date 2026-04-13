@@ -3,6 +3,8 @@ import Globe from './components/Globe'
 import ControlsHint from './components/ControlsHint'
 import SidePanel from './components/SidePanel'
 import EnginePanel from './components/EnginePanel'
+import ThermalPanel from './components/ThermalPanel'
+import SloshingPanel from './components/SloshingPanel'
 import RouteSelect from './pages/RouteSelect'
 import styles from './App.module.css'
 
@@ -19,6 +21,7 @@ export default function App() {
   const [voyageKey,      setVoyageKey]      = useState(0)
   const [scrubSeconds,   setScrubSeconds]   = useState(0)
   const [elapsedMs,      setElapsedMs]      = useState(0)
+  const [latestWeather,  setLatestWeather]  = useState(null)
 
   useEffect(() => {
     fetch('/api/route')
@@ -29,6 +32,7 @@ export default function App() {
       .catch(() => {})
   }, [])
 
+  const handleWeatherChange  = useCallback(setLatestWeather, [])
   const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0) }, [])
   const handleReselect       = useCallback(() => { setIsRunning(false); setVoyageComplete(false); setPage('select') }, [])
   const handleCoordsChange   = useCallback(setCoords,       [])
@@ -65,12 +69,18 @@ export default function App() {
           scrubSeconds={scrubSeconds}
           onScrubChange={setScrubSeconds}
           onElapsedChange={setElapsedMs}
+          onWeatherChange={handleWeatherChange}
         />
         <EnginePanel
           routeId={routeId}
           elapsedMs={elapsedMs}
           isRunning={isRunning}
         />
+      </div>
+
+      <div className={styles.rightPanels}>
+        <ThermalPanel weather={latestWeather} />
+        <SloshingPanel weather={latestWeather} />
       </div>
 
       {onLand && (

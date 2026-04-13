@@ -50,12 +50,20 @@ async function fetchWeather(lat, lon) {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
 }
+
+async function fetchSeaTemp(lat, lon) {
+  const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=sea_surface_temperature`
+  const res = await fetch(url)
+  if (!res.ok) return null
+  const data = await res.json()
+  return data.current?.sea_surface_temperature ?? null
+}
 function fmtTime(d) {
   return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 }
 
 // ────────────────────────────────────────────────────────────
-export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageKey, scrubSeconds, onScrubChange, onElapsedChange }) {
+export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageKey, scrubSeconds, onScrubChange, onElapsedChange, onWeatherChange }) {
   const route  = ROUTES.find(r => r.id === routeId)
   const distKm = route ? Math.round(routeDistanceKm(route.coords)) : null
   const distNm = distKm ? Math.round(distKm / 1.852) : null
@@ -155,23 +163,25 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
     setError(null)
 
     const t = new Date()
-    fetchWeather(sp.lat, sp.lon)
-      .then(raw => {
+    Promise.all([fetchWeather(sp.lat, sp.lon), fetchSeaTemp(sp.lat, sp.lon)])
+      .then(([raw, seaTemp]) => {
         const entry = {
           id:        now,
           time:      fmtTime(t),
           lat:       sp.lat.toFixed(3),
           lon:       sp.lon.toFixed(3),
           temp:      raw.main?.temp?.toFixed(1)       ?? '--',
-          feelsLike: raw.main?.feels_like?.toFixed(1) ?? '--',
+          seaTemp:   seaTemp != null ? seaTemp.toFixed(1) : '--',
           humidity:  raw.main?.humidity               ?? '--',
           pressure:  raw.main?.pressure               ?? '--',
           windSpeed: raw.wind?.speed?.toFixed(1)      ?? '--',
           windGust:  raw.wind?.gust != null ? raw.wind.gust.toFixed(1) : null,
           windDeg:   raw.wind?.deg ?? 0,
           windDir:   degToDir(raw.wind?.deg ?? 0),
+          clouds:    raw.clouds?.all                  ?? 0,
           desc:      raw.weather?.[0]?.description    ?? '',
         }
+        onWeatherChange?.(entry)
         setLogs(prev => [entry, ...prev].slice(0, MAX_LOGS))
       })
       .catch(e => setError(e.message))
@@ -316,10 +326,11 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
             <div className={styles.fetchedAt}>{latest.time} 수집</div>
 
             <div className={styles.grid}>
-              <Cell label="외기온도"  val={latest.temp}      unit="°C"  />
-              <Cell label="체감온도"  val={latest.feelsLike} unit="°C"  />
+              <Cell label="외기온도"  val={latest.temp}    unit="°C"  />
+              <Cell label="해수온도"  val={latest.seaTemp} unit="°C"  />
               <Cell label="습도"      val={latest.humidity}  unit="%"   />
               <Cell label="풍속"      val={latest.windSpeed} unit="m/s" />
+              <Cell label="돌풍"      val={latest.windGust ?? '--'} unit={latest.windGust != null ? 'm/s' : ''} gust />
               <Cell
                 label="풍향"
                 val={
@@ -329,9 +340,6 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
                   </span>
                 }
               />
-              {latest.windGust != null && (
-                <Cell label="돌풍" val={latest.windGust} unit="m/s" gust />
-              )}
             </div>
           </>
         )}

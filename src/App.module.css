@@ -9,6 +9,16 @@
   gap: 12px;
 }
 
+.rightPanels {
+  position: fixed;
+  top: 7px;
+  right: 5px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .landWarning {
   position: fixed;
   top: 50%;
