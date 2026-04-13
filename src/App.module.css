@@ -7,10 +7,16 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: calc(100vh - 84px);
+  max-height: calc(100vh - 14px);
   overflow-y: auto;
-  overflow-x: visible;
-  padding-bottom: 52px;
+  overflow-x: clip;
+}
+
+.leftPanels::after {
+  content: '';
+  display: block;
+  height: 110px;
+  flex-shrink: 0;
 }
 
 .rightPanels {
@@ -21,10 +27,16 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: calc(100vh - 84px);
+  max-height: calc(100vh - 14px);
   overflow-y: auto;
-  overflow-x: visible;
-  padding-bottom: 52px;
+  overflow-x: clip;
+}
+
+.rightPanels::after {
+  content: '';
+  display: block;
+  height: 110px;
+  flex-shrink: 0;
 }
 
 /* ── 커스텀 스크롤바 ─────────────────────────────────────── */

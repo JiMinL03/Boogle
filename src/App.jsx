@@ -104,7 +104,7 @@ export default function App() {
 
       <button
         className={styles.toggleBtn}
-        style={{ right: rightVisible ? '270px' : '13px' }}
+        style={{ right: rightVisible ? '330px' : '13px' }}
         onClick={() => setRightVisible(v => !v)}
         title={rightVisible ? '오른쪽 패널 숨기기' : '오른쪽 패널 보이기'}
       >

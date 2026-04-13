@@ -145,6 +145,7 @@ export default function SloshingPanel({ weather, onSloshingChange }) {
           style={{
             width: '100%',
             marginTop: 12,
+            marginBottom: 4,
             display: 'block',
             transform: `rotate(${svgTilt}deg)`,
             transformOrigin: '50% 55%',
