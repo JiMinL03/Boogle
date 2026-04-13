@@ -256,7 +256,7 @@ function BallastDiagram({ progressPct, remainingTon, expectedTon }) {
 const CARGO_TANK   = "M 62,14 L 218,14 L 276,58 L 276,148 L 248,180 L 32,180 L 4,148 L 4,58 Z"
 const CT_TOP       = 14
 const CT_BOTTOM    = 180
-const CARGO_TOTAL  = 119_700   // ton
+const CARGO_TOTAL  = 78_300   // ton
 
 function CargoDiagram() {
   const tankH  = CT_BOTTOM - CT_TOP   // 166

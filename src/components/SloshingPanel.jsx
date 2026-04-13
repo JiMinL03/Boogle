@@ -7,13 +7,26 @@ const CT_TOP     = 14
 const CT_BOTTOM  = 180
 const CT_CX      = 140     // 탱크 중심 x
 
-const CARGO_VOL  = 119_700   // m³
-const TANK_VOL   = 174_000   // m³
-const FILL_FRAC  = CARGO_VOL / TANK_VOL   // ~0.688
+const FILL_FRAC = 0.98       // 출항 초기 충전율 98% — Full Condition (low sloshing)
 
 const TANK_H = CT_BOTTOM - CT_TOP          // 166
-const FILL_H = TANK_H * FILL_FRAC          // ~114
-const BASE_Y = CT_BOTTOM - FILL_H          // ~66 (정지 시 액면 y)
+const FILL_H = TANK_H * FILL_FRAC          // ~162.7
+const BASE_Y = CT_BOTTOM - FILL_H          // ~17.3 (정지 시 액면 y)
+
+// ── 충전율 → 슬로싱 위험 계수 ────────────────────────────
+// 물리적 근거:
+//   > 90% (Full)     : 유체 구속, 슬로싱 억제 → 매우 낮음
+//   80~90%           : 부분 억제 → 낮음
+//   20~80% (Partial) : 자유 액면 진동 → 최고 위험 구간
+//   10~20%           : 액량 부족, 파고 감소 → 낮음
+//   < 10% (Nearly empty): 슬로싱 억제 → 매우 낮음
+function fillFactor(f) {
+  if (f > 0.90) return 0.08           // Full Condition
+  if (f > 0.80) return 0.40
+  if (f >= 0.20) return 1.00          // 최위험 구간
+  if (f >= 0.10) return 0.45
+  return 0.15                         // Nearly Empty
+}
 
 // ── 슬로싱 계산 ───────────────────────────────────────────
 // Q_Sloshing = f(Wave Height, Wind Speed, Filling Limit)
@@ -28,9 +41,7 @@ function calcSloshing(weather) {
   // 횡동요각 근사 (LNG선 고유주기 ~20s)
   const rollDeg = Math.min(Hs * 2.5, 18)         // °
 
-  // 충전율 위험 계수: 20~80% 구간이 최위험
-  const fillFactor = (FILL_FRAC >= 0.2 && FILL_FRAC <= 0.8) ? 1.0 : 0.45
-  const intensity  = Math.min((rollDeg / 18) * fillFactor, 1)
+  const intensity = Math.min((rollDeg / 18) * fillFactor(FILL_FRAC), 1)
 
   let risk, riskColor
   if      (intensity < 0.15) { risk = '안전'; riskColor = '#4caf7d' }
