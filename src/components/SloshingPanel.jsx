@@ -9,15 +9,18 @@ const CT_TOP     = 14
 const CT_BOTTOM  = 180
 const CT_CX      = 140     // 탱크 중심 x
 
-const FILL_FRAC_INITIAL = 0.98   // 출항 초기 충전율 98% — Full Condition (low sloshing)
-
 const TANK_H = CT_BOTTOM - CT_TOP   // 166
 
 // ── LNG 질량 상수 (BOG 충진율 계산용) ─────────────────────
-const LNG_VOL_M3      = 174_000            // m³
-const RHO_LNG         = 430               // kg/m³
-const LNG_MASS_T      = LNG_VOL_M3 * RHO_LNG / 1000          // 74,820 tonnes
-const TOTAL_CAPACITY_T = LNG_MASS_T / FILL_FRAC_INITIAL       // ~76,347.96 tonnes
+const LNG_VOL_M3       = 174_000           // m³
+const RHO_LNG          = 430              // kg/m³
+const LNG_MASS_T       = LNG_VOL_M3 * RHO_LNG / 1000         // 74,820 tonnes (탱크 100% 기준)
+const TOTAL_CAPACITY_T = LNG_MASS_T / 0.98                   // 선박 실제 용량 ~76,347 tonnes
+
+// ── 출항지에 따른 초기 충진율 ─────────────────────────────
+// 한국은 LNG 수입국: 한국 출항 시 탱크 거의 비어있음(~3%), 외국 출항 시 가득 참(~98%)
+const FILL_FRAC_KOREA   = 0.03   // 한국 출항 (수입 항차 시작)
+const FILL_FRAC_FOREIGN = 0.98   // 외국 출항 (LNG 선적 후 귀항)
 
 // ── 충전율 → 슬로싱 위험 계수 ────────────────────────────
 // 물리적 근거:
@@ -182,9 +185,14 @@ function calcSloshingWeight(omegaE, omegaTank, chiDeg) {
 }
 
 // ── 컴포넌트 ──────────────────────────────────────────────
-export default function SloshingPanel({ weather, onSloshingChange, bogData, elapsedMs, shipHeading }) {
+export default function SloshingPanel({ weather, onSloshingChange, bogData, elapsedMs, shipHeading, reversed }) {
+  // reversed=false: 한국 출항(빈 탱크 3%), reversed=true: 외국 출항(가득 찬 98%)
+  const initialMassT = reversed
+    ? TOTAL_CAPACITY_T * FILL_FRAC_FOREIGN
+    : TOTAL_CAPACITY_T * FILL_FRAC_KOREA
+
   const [phase, setPhase]               = useState(0)
-  const [currentMassT, setCurrentMassT] = useState(LNG_MASS_T)
+  const [currentMassT, setCurrentMassT] = useState(initialMassT)
   const [modalOpen, setModalOpen]       = useState(false)
   const phaseRef                        = useRef(0)
   const rafRef                          = useRef(null)
