@@ -215,6 +215,7 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange, elaps
         sloshingData={sloshingData}
         Q_thermal_kW={Q_thermal_kW}
         Q_kinetic_kW={Q_kinetic_kW}
+        dH={current.dH}
       />
     </div>
   )

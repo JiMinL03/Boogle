@@ -3,7 +3,7 @@ import styles from './SloshingBOGModal.module.css'
 
 const WS_CAP = 10
 
-export default function SloshingBOGModal({ open, onClose, sloshingData, Q_thermal_kW, Q_kinetic_kW }) {
+export default function SloshingBOGModal({ open, onClose, sloshingData, Q_thermal_kW, Q_kinetic_kW, dH }) {
   if (!open || !sloshingData) return null
 
   const s  = sloshingData
@@ -92,6 +92,41 @@ export default function SloshingBOGModal({ open, onClose, sloshingData, Q_therma
             <span className={styles.calcUnit}>kW</span>
           </div>
         </div>
+
+        <div className={styles.divider} />
+
+        {/* ── STEP 4: kW → BOG kg/h 변환 ── */}
+        {dH != null && (() => {
+          const Q_total_kW = Q_thermal_kW + Q_kinetic_kW
+          const bog_kghr   = (Q_total_kW * 3600 / dH).toFixed(2)
+          return (
+            <div className={styles.step}>
+              <div className={styles.stepLabel}>STEP 4 · 열량 → BOG (kg/h) 변환</div>
+              <div className={styles.formula}>
+                BOG (kg/h) = 열량 (kW) × 3600 / 잠열 (kJ/kg)
+              </div>
+              <div className={styles.calcRow}>
+                <span className={styles.calcPart}>{Q_total_kW.toFixed(1)}</span>
+                <span className={styles.calcUnit}>kW</span>
+                <span className={styles.calcOp}>×</span>
+                <span className={styles.calcPart}>3600</span>
+                <span className={styles.calcOp}>÷</span>
+                <span className={styles.calcPart}>{dH.toLocaleString()}</span>
+                <span className={styles.calcUnit}>kJ/kg</span>
+                <span className={styles.calcOp}>=</span>
+                <span className={styles.calcResult}>{bog_kghr}</span>
+                <span className={styles.calcUnit}>kg/h</span>
+              </div>
+              <div className={styles.grid} style={{ marginTop: 8 }}>
+                <Row label="총 열 유입량"   val={Q_total_kW.toFixed(1)} unit="kW" />
+                <Row label="기화 잠열 (dH)" val={dH.toLocaleString()}   unit="kJ/kg"
+                     note="압력 보정 적용" />
+                <Row label="BOG 발생량"     val={bog_kghr}              unit="kg/h"
+                     highlight color="#4caf7d" />
+              </div>
+            </div>
+          )
+        })()}
 
       </div>
     </div>,
