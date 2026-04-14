@@ -222,7 +222,17 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
   const wsData   = calcSloshingWeight(enc?.omegaE_peak ?? null, omegaTank, chiDeg)
 
   useEffect(() => {
-    onSloshingChange?.({ ...s, Ws: wsData?.WsCapped ?? 1 })
+    onSloshingChange?.({
+      ...s,
+      Ws:        wsData?.WsCapped ?? 1,
+      daf:       wsData?.daf       ?? null,
+      r:         wsData?.r         ?? null,
+      sinChi:    wsData?.sinChi    ?? null,
+      omegaTank: omegaTank         ?? null,
+      omegaE:    enc?.omegaE_peak  ?? null,
+      fillFrac:  currentFillFrac,
+      fillFactor: fillFactor(currentFillFrac),
+    })
   }, [weather, currentFillFrac, wsData?.Ws])
 
   // 애니메이션 루프 — intensity가 바뀌면 속도 재설정

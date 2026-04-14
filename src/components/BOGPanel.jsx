@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import styles from './BOGPanel.module.css'
+import SloshingBOGModal from './SloshingBOGModal'
+
 
 // ── 탱크 물성 상수 ─────────────────────────────────────────
 const LNG_VOL   = 174_000       // m³
@@ -36,9 +38,12 @@ const MAX_HISTORY = 60
 const CHART_W = 228
 const CHART_H = 60
 
-export default function BOGPanel({ thermalData, sloshingData, onBOGChange }) {
-  const [history, setHistory] = useState([])
-  const prevThermalRef = useRef(null)
+export default function BOGPanel({ thermalData, sloshingData, onBOGChange, elapsedMs }) {
+  const [history, setHistory]         = useState([])
+  const [modalOpen, setModalOpen]     = useState(false)
+  const [accumulated, setAccumulated] = useState(0)
+  const prevThermalRef  = useRef(null)
+  const prevElapsedRef  = useRef(0)
 
   const Q_thermal_kW  = thermalData?.Q_total ?? 0
   const Ws            = sloshingData?.Ws ?? 1
@@ -58,6 +63,16 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange }) {
   useEffect(() => {
     onBOGChange?.(current)
   }, [Q_thermal_kW, Q_kinetic_kW])
+
+  useEffect(() => {
+    if (elapsedMs == null || !current) return
+    const deltaMs = elapsedMs - prevElapsedRef.current
+    if (deltaMs === 0) return
+    prevElapsedRef.current = elapsedMs
+    const deltaHours = deltaMs / 3_600_000
+    const deltaBOG   = current.bogKgHr * deltaHours
+    setAccumulated(prev => Math.max(0, prev + deltaBOG))
+  }, [elapsedMs])
 
   const borRisk = current
     ? current.bor < 0.10 ? '#4caf7d'
@@ -114,6 +129,10 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange }) {
               </span>
               <span className={styles.heroUnit}>kg/hr</span>
             </div>
+            <div className={styles.heroSub}>
+              {(current.bogKgHr / 3600).toFixed(4)}
+              <span className={styles.heroSubUnit}> kg/s</span>
+            </div>
           </div>
           <div className={styles.heroDivider} />
           <div className={styles.heroBlock}>
@@ -124,6 +143,18 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange }) {
               </span>
               <span className={styles.heroUnit}>%/day</span>
             </div>
+          </div>
+        </div>
+
+        {/* ── BOG 누적량 ── */}
+        <div className={styles.accumWrap}>
+          <div className={styles.accumLabel}>BOG 누적량</div>
+          <div className={styles.accumVal}>
+            <span className={styles.accumNum}>{(accumulated / 1000).toFixed(4)}</span>
+            <span className={styles.accumUnit}>t</span>
+          </div>
+          <div className={styles.accumBar}>
+            <div className={styles.accumBarFill} style={{ width: `${Math.min((accumulated % 1000) / 10, 100)}%` }} />
           </div>
         </div>
 
@@ -169,21 +200,32 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange }) {
         <div className={styles.blockLabel}>입력 파라미터</div>
         <div className={styles.grid}>
           <Cell label="열 유입량"       val={Q_thermal_kW.toFixed(1)} unit="kW" />
-          <Cell label="슬로싱 열량"     val={Q_kinetic_kW.toFixed(1)} unit="kW" accent />
+          <Cell label="슬로싱 열량"     val={Q_kinetic_kW.toFixed(1)} unit="kW" accent
+                onClick={() => setModalOpen(true)} clickable />
           <Cell label="총 열 유입"      val={current.Q_total}          unit="kW" />
           <Cell label="기화 잠열"       val={current.dH}               unit="kJ/kg" />
           <Cell label="탱크 압력"       val={`+${P_GAUGE_KPA}`}        unit="kPa" />
         </div>
 
       </section>
+
+      <SloshingBOGModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        sloshingData={sloshingData}
+        Q_thermal_kW={Q_thermal_kW}
+        Q_kinetic_kW={Q_kinetic_kW}
+      />
     </div>
   )
 }
 
-function Cell({ label, val, unit, accent, note }) {
+function Cell({ label, val, unit, accent, note, onClick, clickable }) {
   return (
-    <div className={styles.cell}>
-      <span className={styles.cellLabel}>{label}</span>
+    <div className={`${styles.cell} ${clickable ? styles.cellClickable : ''}`} onClick={onClick}>
+      <span className={styles.cellLabel}>
+        {label}{clickable && <span className={styles.cellHint}> ↗</span>}
+      </span>
       <span className={styles.cellVal}>
         <span className={`${styles.cellNum} ${accent ? styles.accent : ''}`}>{val}</span>
         {unit && <span className={styles.cellUnit}>{unit}</span>}
