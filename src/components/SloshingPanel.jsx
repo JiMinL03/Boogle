@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import styles from './SloshingPanel.module.css'
 import { SHIP } from '../constants/ship'
+import WaveInfoModal from './WaveInfoModal'
 
 // ── 카고 탱크 상수 ─────────────────────────────────────────
 const CARGO_TANK = "M 62,14 L 218,14 L 276,58 L 276,148 L 248,180 L 32,180 L 4,148 L 4,58 Z"
@@ -184,6 +185,7 @@ function calcSloshingWeight(omegaE, omegaTank, chiDeg) {
 export default function SloshingPanel({ weather, onSloshingChange, bogData, elapsedMs, shipHeading }) {
   const [phase, setPhase]               = useState(0)
   const [currentMassT, setCurrentMassT] = useState(LNG_MASS_T)
+  const [modalOpen, setModalOpen]       = useState(false)
   const phaseRef                        = useRef(0)
   const rafRef                          = useRef(null)
   const prevElapsedRef                  = useRef(0)
@@ -377,10 +379,16 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
           const Te_s   = enc ? +(2 * Math.PI / enc.omegaE_peak).toFixed(2) : null
 
           return (
-            <div className={styles.spectrumWrap}>
+            <div className={styles.spectrumWrap}
+                 onClick={() => setModalOpen(true)}
+                 title="클릭하면 파도 방향별 영향을 자세히 볼 수 있습니다"
+                 style={{ cursor: 'pointer' }}>
 
               {/* ── 제목 + 핵심 수치 ── */}
-              <div className={styles.spectrumLabel}>파도 에너지 분포</div>
+              <div className={styles.spectrumLabel}>
+                파도 에너지 분포
+                <span className={styles.spectrumClickHint}>탭하여 자세히 보기 →</span>
+              </div>
               <div className={styles.spectrumInfoRow}>
                 <span className={styles.spectrumInfoChip} style={{ borderColor: '#44aadd55', color: '#44aadd' }}>
                   실제 파도 주기&nbsp;<strong>{T1_s}초</strong>
@@ -559,6 +567,12 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
         </svg>
 
       </section>
+
+      <WaveInfoModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        currentRegime={enc?.regime ?? null}
+      />
     </div>
   )
 }

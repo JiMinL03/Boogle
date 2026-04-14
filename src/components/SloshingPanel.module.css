@@ -66,12 +66,30 @@
   margin-bottom: 2px;
 }
 
+.spectrumWrap {
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.spectrumWrap:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .spectrumLabel {
   font-size: 11px;
   font-weight: 700;
   color: rgba(200, 225, 255, 0.70);
   letter-spacing: 0.04em;
   margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.spectrumClickHint {
+  font-size: 9px;
+  font-weight: 500;
+  color: rgba(140, 180, 220, 0.35);
+  letter-spacing: 0.02em;
 }
 
 .spectrumInfoRow {
