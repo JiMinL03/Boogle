@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import styles from './SloshingPanel.module.css'
+import { SHIP } from '../constants/ship'
 
 // ── 카고 탱크 상수 ─────────────────────────────────────────
 const CARGO_TANK = "M 62,14 L 218,14 L 276,58 L 276,148 L 248,180 L 32,180 L 4,148 L 4,58 Z"
@@ -32,6 +33,50 @@ function fillFactor(f) {
   return 0.15                         // Nearly Empty
 }
 
+// ── 2단계: 조류 방향 가중치 파고 보정 ────────────────────
+// H_actual = H_base · (1 + C_wc · cos α_wc)
+// C_wc = -0.25 : 역조(α≈180°)→ 증폭, 순조(α≈0°)→ 감소
+const C_WC = -0.25
+
+function correctWaveHeight(H_base, waveDeg, currentDeg) {
+  if (waveDeg == null || currentDeg == null) return { H_actual: H_base, alphaDeg: null, regime: null }
+  // 만남각 [0°, 180°]
+  let diff = Math.abs(waveDeg - currentDeg) % 360
+  if (diff > 180) diff = 360 - diff
+  const alphaRad  = diff * Math.PI / 180
+  const H_actual  = Math.max(0, H_base * (1 + C_WC * Math.cos(alphaRad)))
+  const regime    = diff > 135 ? '역조' : diff < 45 ? '순조' : '사교'
+  return { H_actual: +H_actual.toFixed(2), alphaDeg: +diff.toFixed(1), regime }
+}
+
+// ── 3단계: ISSC 파도 에너지 스펙트럼 ─────────────────────
+// S_ζ(ω) = 0.11 · H² · ω₁⁻¹ · (ω/ω₁)⁻⁵ · exp[-0.44 · (ω/ω₁)⁻⁴]
+// ω₁: 모달 주파수 (ITTC 근사 T₁ = 3.86·√H → ω₁ = 2π/T₁)
+const ISSC_N = 80  // 주파수 샘플 수
+
+function calcISSC(H_actual) {
+  if (H_actual <= 0) return null
+  const T1     = 3.86 * Math.sqrt(H_actual)      // 평균 주기 (s)
+  const omega1 = (2 * Math.PI) / T1              // 모달 주파수 (rad/s)
+
+  // ω 범위: 0.15 ~ 3.5 rad/s (로그 스케일로 분포)
+  const omegaMin = 0.15
+  const omegaMax = 3.5
+  const points = []
+  for (let i = 0; i < ISSC_N; i++) {
+    const t = i / (ISSC_N - 1)
+    const w = omegaMin + t * (omegaMax - omegaMin)
+    const r = w / omega1
+    const S = 0.11 * H_actual ** 2 * (1 / omega1) * r ** -5 * Math.exp(-0.44 * r ** -4)
+    points.push({ omega: w, S: isFinite(S) ? S : 0 })
+  }
+  const Smax = Math.max(...points.map(p => p.S))
+  // 피크 위치 인덱스
+  const peakIdx = points.reduce((mi, p, i) => p.S > points[mi].S ? i : mi, 0)
+
+  return { T1: +T1.toFixed(2), omega1: +omega1.toFixed(3), Smax: +Smax.toFixed(3), points, peakIdx }
+}
+
 // ── 슬로싱 계산 ───────────────────────────────────────────
 // Q_Sloshing = f(Wave Height, Wind Speed, Filling Limit)
 function calcSloshing(weather, fillFrac) {
@@ -39,8 +84,14 @@ function calcSloshing(weather, fillFrac) {
   const vg   = parseFloat(weather?.windGust)  || v
   const vMax = Math.max(v, vg)
 
-  // 유의파고 Hs — 간이 Bretschneider
-  const Hs = Math.min(0.0248 * vMax ** 2, 12)   // m
+  // 1단계: 유의파고 Hs_base — 간이 Bretschneider
+  const Hs_base = Math.min(0.0248 * vMax ** 2, 12)   // m
+
+  // 2단계: 조류 방향 가중치 보정
+  const { H_actual, alphaDeg, regime } = correctWaveHeight(
+    Hs_base, weather?.waveDeg, weather?.currentDeg
+  )
+  const Hs = H_actual   // 보정된 유효 파고 사용
 
   // 횡동요각 근사 (LNG선 고유주기 ~20s)
   const rollDeg = Math.min(Hs * 2.5, 18)         // °
@@ -53,11 +104,84 @@ function calcSloshing(weather, fillFrac) {
   else if (intensity < 0.70) { risk = '경고'; riskColor = '#ff9800' }
   else                       { risk = '위험'; riskColor = '#ff3300' }
 
-  return { Hs: +Hs.toFixed(2), rollDeg: +rollDeg.toFixed(1), intensity, risk, riskColor }
+  return { Hs_base: +Hs_base.toFixed(2), Hs: +Hs.toFixed(2), alphaDeg, regime, rollDeg: +rollDeg.toFixed(1), intensity, risk, riskColor }
+}
+
+// ── 4단계: 만남 주파수 변환 ──────────────────────────────
+// ω_e = ω · (1 - V·ω·cos χ / g)
+// χ: 파도-선박 만남각 (0°=선미파, 180°=선수파)
+// V: 선속 (m/s), g: 중력가속도
+const G = 9.81
+
+function calcEncounterAngle(waveDeg, shipHeading) {
+  if (waveDeg == null || shipHeading == null) return null
+  // χ = 0° → 선미파(동일 방향), χ = 180° → 선수파(정반대)
+  return ((waveDeg - shipHeading) % 360 + 360) % 360
+}
+
+function calcEncounterSpectrum(isscPoints, V_knots, chiDeg) {
+  if (!isscPoints || chiDeg == null) return null
+  const V      = V_knots * 1852 / 3600   // m/s
+  const chiRad = chiDeg * Math.PI / 180
+
+  const enc = isscPoints
+    .map(({ omega, S }) => {
+      const omega_e = omega * (1 - (V * omega * Math.cos(chiRad)) / G)
+      return { omega_e, S, omega }
+    })
+    .filter(p => p.omega_e > 0)          // ω_e ≤ 0 구간 제외
+
+  if (enc.length < 2) return null
+
+  const Smax_e   = Math.max(...enc.map(p => p.S))
+  const peakE    = enc.reduce((m, p) => p.S > m.S ? p : m, enc[0])
+  const omegaE_peak = +peakE.omega_e.toFixed(3)
+
+  // 체감 주기 분류
+  const chi180 = chiDeg > 180 ? 360 - chiDeg : chiDeg   // [0°,180°]로 접기
+  const regime =
+    chi180 > 135 ? '선수파' :
+    chi180 < 45  ? '선미파' : '횡파'
+
+  return { enc, Smax_e, omegaE_peak, regime, chiDeg: +chiDeg.toFixed(1) }
+}
+
+// ── 5단계: 슬로싱 가중치 W_s ────────────────────────────
+// W_s = DAF × |sin χ|
+// DAF = 1 / √([1-(ωe/ωtank)²]² + [2ζ(ωe/ωtank)]²)
+const TANK_B      = 43     // m — 횡방향 폭 (transverse sloshing)
+const TANK_H_FULL = 26     // m — 만재 시 탱크 높이
+const ZETA        = 0.07   // 감쇠비 (LNG membrane tank 기준)
+const WS_CAP      = 10     // BOG 계산용 W_s 상한
+
+function calcOmegaTank(fillFrac) {
+  const h = fillFrac * TANK_H_FULL
+  if (h < 0.05) return null
+  // 1차 횡방향 슬로싱 모드 (Faltinsen 공식)
+  return Math.sqrt(G * (Math.PI / TANK_B) * Math.tanh(Math.PI * h / TANK_B))
+}
+
+function calcSloshingWeight(omegaE, omegaTank, chiDeg) {
+  if (omegaE == null || omegaTank == null || chiDeg == null) return null
+  const r      = omegaE / omegaTank
+  const daf    = 1 / Math.sqrt((1 - r ** 2) ** 2 + (2 * ZETA * r) ** 2)
+  const sinChi = Math.abs(Math.sin(chiDeg * Math.PI / 180))
+  const Ws     = daf * sinChi
+  // 공진 근접 여부
+  const nearResonance = r > 0.8 && r < 1.2
+  return {
+    Ws:     +Ws.toFixed(3),
+    WsCapped: +Math.min(Ws, WS_CAP).toFixed(3),
+    daf:    +daf.toFixed(3),
+    r:      +r.toFixed(3),
+    sinChi: +sinChi.toFixed(3),
+    omegaTank: +omegaTank.toFixed(3),
+    nearResonance,
+  }
 }
 
 // ── 컴포넌트 ──────────────────────────────────────────────
-export default function SloshingPanel({ weather, onSloshingChange, bogData, elapsedMs }) {
+export default function SloshingPanel({ weather, onSloshingChange, bogData, elapsedMs, shipHeading }) {
   const [phase, setPhase]               = useState(0)
   const [currentMassT, setCurrentMassT] = useState(LNG_MASS_T)
   const phaseRef                        = useRef(0)
@@ -77,9 +201,17 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
 
   const currentFillFrac = currentMassT / TOTAL_CAPACITY_T
 
-  const s = calcSloshing(weather, currentFillFrac)
+  const s    = calcSloshing(weather, currentFillFrac)
+  const issc = calcISSC(s.Hs)
 
-  useEffect(() => { onSloshingChange?.(s) }, [weather, currentFillFrac])
+  const chiDeg   = calcEncounterAngle(weather?.waveDeg, shipHeading)
+  const enc      = calcEncounterSpectrum(issc?.points ?? null, SHIP.knots, chiDeg)
+  const omegaTank = calcOmegaTank(currentFillFrac)
+  const wsData   = calcSloshingWeight(enc?.omegaE_peak ?? null, omegaTank, chiDeg)
+
+  useEffect(() => {
+    onSloshingChange?.({ ...s, Ws: wsData?.WsCapped ?? 1 })
+  }, [weather, currentFillFrac, wsData?.Ws])
 
   // 애니메이션 루프 — intensity가 바뀌면 속도 재설정
   useEffect(() => {
@@ -154,12 +286,195 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
 
         {/* ── 파라미터 그리드 ── */}
         <div className={styles.grid}>
-          <Cell label="유의파고 Hs" val={s.Hs}                           unit="m" />
-          <Cell label="횡동요각"    val={s.rollDeg}                      unit="°" />
-          <Cell label="충진율"      val={(currentFillFrac * 100).toFixed(1)}   unit="%" />
-          <Cell label="슬로싱 강도" val={(s.intensity * 100).toFixed(0)} unit="%"
-                color={s.intensity > 0.15 ? s.riskColor : undefined} />
+          <Cell label="기본 파고"       val={s.Hs_base}                          unit="m" />
+          <Cell label="보정 파고"       val={s.Hs}                               unit="m"
+                color={s.alphaDeg != null ? (s.regime === '역조' ? '#ff9800' : s.regime === '순조' ? '#4caf7d' : undefined) : undefined} />
+          {s.alphaDeg != null && (
+            <Cell label="파향-조류 교차각" val={s.alphaDeg}                      unit="°"
+                  sub={s.regime} />
+          )}
+          <Cell label="선박 기울기"     val={s.rollDeg}                          unit="°" />
+          <Cell label="충진율"          val={(currentFillFrac * 100).toFixed(1)} unit="%" />
+          {omegaTank != null && (
+            <Cell label="탱크 공진 주파수" val={omegaTank.toFixed(3)}            unit="rad/s" />
+          )}
+          {wsData != null && (
+            <Cell label="공진 근접도"   val={wsData.r}                           unit="배"
+                  sub={wsData.nearResonance ? '⚠ 공진 임박' : wsData.r > 0.6 ? '주의' : '안전'}
+                  color={wsData.nearResonance ? '#ff3300' : wsData.r > 0.6 ? '#ffcc44' : undefined} />
+          )}
         </div>
+
+        {/* ── 슬로싱 위험도 (W_s) ── */}
+        {wsData != null && (
+          <div className={`${styles.wsBar} ${wsData.nearResonance ? styles.wsBarResonance : ''}`}>
+            <div className={styles.wsLeft}>
+              <span className={styles.wsLabel}>슬로싱 위험도</span>
+              <span className={styles.wsSub}>공진 증폭 {wsData.daf} × 횡파 방향성 {wsData.sinChi}</span>
+            </div>
+            <div className={styles.wsRight}>
+              <span className={styles.wsVal}
+                    style={{ color: wsData.Ws > 3 ? '#ff3300' : wsData.Ws > 1.5 ? '#ff9800' : '#4caf7d' }}>
+                {wsData.Ws > WS_CAP ? `>${WS_CAP}` : wsData.Ws}
+              </span>
+              {wsData.nearResonance && (
+                <span className={styles.wsWarn}>공진 위험</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── ISSC 파도 에너지 스펙트럼 + 만남 주파수 차트 ── */}
+        {issc && (() => {
+          const CW = 228, CH = 72
+          const omegaMin = 0.15, omegaMax = 3.5
+          const omegaToX = w => ((w - omegaMin) / (omegaMax - omegaMin)) * CW
+
+          // ── 원본 ISSC 스펙트럼 (파란색) ──
+          const pts = issc.points.map((p, i) => ({
+            x: (i / (ISSC_N - 1)) * CW,
+            y: CH - (p.S / issc.Smax) * (CH - 8) - 4,
+          }))
+          const linePath = pts.map((p, i) =>
+            `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`
+          ).join(' ')
+          const fillPath = [
+            `M ${pts[0].x.toFixed(1)},${CH}`,
+            ...pts.map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`),
+            `L ${pts[pts.length - 1].x.toFixed(1)},${CH} Z`,
+          ].join(' ')
+          const pk = pts[issc.peakIdx]
+
+          // ── 만남 스펙트럼 (주황색): ω_e 축으로 이동한 동일 에너지 ──
+          let encLine = null, encFill = null, encPkX = null, encPkY = null
+          if (enc) {
+            const ePts = enc.enc
+              .map(p => ({
+                x: omegaToX(p.omega_e),
+                y: CH - (p.S / issc.Smax) * (CH - 8) - 4,
+              }))
+              .filter(p => p.x >= 0 && p.x <= CW)
+
+            if (ePts.length >= 2) {
+              encLine = ePts.map((p, i) =>
+                `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`
+              ).join(' ')
+              encFill = [
+                `M ${ePts[0].x.toFixed(1)},${CH}`,
+                ...ePts.map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`),
+                `L ${ePts[ePts.length - 1].x.toFixed(1)},${CH} Z`,
+              ].join(' ')
+              const epk = ePts.reduce((m, p) => p.y < m.y ? p : m, ePts[0])
+              encPkX = epk.x.toFixed(1)
+              encPkY = epk.y.toFixed(1)
+            }
+          }
+
+          const ticks = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+
+          // 주기(초)로 변환 — 비전공자에게 직관적
+          const T1_s   = issc.T1
+          const Te_s   = enc ? +(2 * Math.PI / enc.omegaE_peak).toFixed(2) : null
+
+          return (
+            <div className={styles.spectrumWrap}>
+
+              {/* ── 제목 + 핵심 수치 ── */}
+              <div className={styles.spectrumLabel}>파도 에너지 분포</div>
+              <div className={styles.spectrumInfoRow}>
+                <span className={styles.spectrumInfoChip} style={{ borderColor: '#44aadd55', color: '#44aadd' }}>
+                  실제 파도 주기&nbsp;<strong>{T1_s}초</strong>
+                </span>
+                {enc && Te_s && (
+                  <span className={styles.spectrumInfoChip} style={{ borderColor: '#ff884455', color: '#ff8844' }}>
+                    선박 체감 주기&nbsp;<strong>{Te_s}초</strong>
+                    &nbsp;·&nbsp;{enc.regime}
+                  </span>
+                )}
+              </div>
+
+              {/* ── SVG 차트 ── */}
+              <svg viewBox={`0 0 ${CW} ${CH}`} className={styles.spectrumChart}>
+                <defs>
+                  <linearGradient id="isscFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor="#44aadd" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#44aadd" stopOpacity="0.02" />
+                  </linearGradient>
+                  <linearGradient id="encFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor="#ff8844" stopOpacity="0.40" />
+                    <stop offset="100%" stopColor="#ff8844" stopOpacity="0.02" />
+                  </linearGradient>
+                </defs>
+
+                {/* 격자선 */}
+                {[0.25, 0.5, 0.75].map(r => (
+                  <line key={r} x1="0" y1={CH * r} x2={CW} y2={CH * r}
+                        stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                ))}
+                {/* x축 눈금 (주기(초) 표기 → 직관적) */}
+                {ticks.map(w => {
+                  const x   = omegaToX(w)
+                  const sec = (2 * Math.PI / w).toFixed(1)   // rad/s → 초
+                  return (
+                    <g key={w}>
+                      <line x1={x} y1={CH - 3} x2={x} y2={CH}
+                            stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+                      <text x={x} y={CH - 4} textAnchor="middle"
+                            fill="rgba(255,255,255,0.28)" fontSize="5.5">{sec}s</text>
+                    </g>
+                  )
+                })}
+
+                {/* 실제 파도 에너지 (파란색) */}
+                <path d={fillPath} fill="url(#isscFill)" />
+                <path d={linePath} fill="none" stroke="#44aadd" strokeWidth="1.4"
+                      strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
+                <line x1={pk.x.toFixed(1)} y1={pk.y.toFixed(1)} x2={pk.x.toFixed(1)} y2={CH}
+                      stroke="#44aadd" strokeWidth="1" strokeDasharray="2,2" opacity="0.5" />
+                <circle cx={pk.x.toFixed(1)} cy={pk.y.toFixed(1)} r="2.5" fill="#44aadd" />
+                <text x={Math.min(pk.x + 4, CW - 36)} y={pk.y - 4}
+                      fill="#44aadd" fontSize="6" fontWeight="700">실제 정점</text>
+
+                {/* 선박 체감 파도 에너지 (주황색) */}
+                {encLine && (
+                  <>
+                    <path d={encFill} fill="url(#encFill)" />
+                    <path d={encLine} fill="none" stroke="#ff8844" strokeWidth="1.6"
+                          strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1={encPkX} y1={encPkY} x2={encPkX} y2={CH}
+                          stroke="#ff8844" strokeWidth="1" strokeDasharray="2,2" opacity="0.6" />
+                    <circle cx={encPkX} cy={encPkY} r="3" fill="#ff8844" />
+                    <text x={Math.min(parseFloat(encPkX) + 4, CW - 36)} y={parseFloat(encPkY) - 4}
+                          fill="#ff8844" fontSize="6" fontWeight="700">체감 정점</text>
+                  </>
+                )}
+
+                {/* x축 레이블 */}
+                <text x="2"   y={CH - 1} fill="rgba(255,255,255,0.18)" fontSize="5">← 긴 파도</text>
+                <text x={CW} y={CH - 1} textAnchor="end" fill="rgba(255,255,255,0.18)" fontSize="5">짧은 파도 →</text>
+              </svg>
+
+              {/* ── 범례 + 해설 ── */}
+              <div className={styles.spectrumLegend}>
+                <span className={styles.legendItem} style={{ color: '#44aadd' }}>
+                  ━ 실제 파도 에너지
+                </span>
+                {enc && (
+                  <span className={styles.legendItem} style={{ color: '#ff8844' }}>
+                    ━ 선박 체감 에너지
+                  </span>
+                )}
+              </div>
+              {enc && (
+                <div className={styles.spectrumHint}>
+                  {enc.regime === '선수파' && '주황 곡선이 오른쪽으로 이동 → 파도가 실제보다 빠르게 느껴짐'}
+                  {enc.regime === '선미파' && '주황 곡선이 왼쪽으로 이동 → 파도가 실제보다 느리게 느껴짐'}
+                  {enc.regime === '횡파'   && '주황 곡선이 거의 이동 없음 · 횡파 → 롤링 위험 구간'}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* ── 탱크 SVG ── */}
         <svg
@@ -248,13 +563,14 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
   )
 }
 
-function Cell({ label, val, unit, color }) {
+function Cell({ label, val, unit, color, sub }) {
   return (
     <div className={styles.cell}>
       <span className={styles.cellLabel}>{label}</span>
       <span className={styles.cellVal}>
         <span className={styles.cellNum} style={color ? { color } : undefined}>{val}</span>
         {unit && <span className={styles.cellUnit}>{unit}</span>}
+        {sub && <span className={styles.cellSub}>{sub}</span>}
       </span>
     </div>
   )

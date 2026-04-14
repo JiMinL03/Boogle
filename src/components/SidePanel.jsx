@@ -23,9 +23,6 @@ function routeDistanceKm(coords) {
 
 // ── 방위 ─────────────────────────────────────────────────────
 const DIRS = ['북','북북동','북동','동북동','동','동남동','남동','남남동','남','남남서','남서','서남서','서','서북서','북서','북북서']
-function headingToKo(deg) { return DIRS[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16] }
-function fmtLat(v) { return `${v >= 0 ? 'N' : 'S'} ${Math.abs(v).toFixed(3)}°` }
-function fmtLon(v) { return `${v >= 0 ? 'E' : 'W'} ${Math.abs(v).toFixed(3)}°` }
 function degToDir(deg) {
   return DIRS[Math.round(((deg ?? 0) / 22.5)) % 16]
 }
@@ -51,12 +48,17 @@ async function fetchWeather(lat, lon) {
   return res.json()
 }
 
-async function fetchSeaTemp(lat, lon) {
-  const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=sea_surface_temperature`
+async function fetchMarine(lat, lon) {
+  const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=sea_surface_temperature,wave_direction,ocean_current_direction`
   const res = await fetch(url)
   if (!res.ok) return null
   const data = await res.json()
-  return data.current?.sea_surface_temperature ?? null
+  const c = data.current ?? {}
+  return {
+    seaTemp:        c.sea_surface_temperature    ?? null,
+    waveDeg:        c.wave_direction             ?? null,
+    currentDeg:     c.ocean_current_direction    ?? null,
+  }
 }
 function fmtTime(d) {
   return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
@@ -163,23 +165,24 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
     setError(null)
 
     const t = new Date()
-    Promise.all([fetchWeather(sp.lat, sp.lon), fetchSeaTemp(sp.lat, sp.lon)])
-      .then(([raw, seaTemp]) => {
+    Promise.all([fetchWeather(sp.lat, sp.lon), fetchMarine(sp.lat, sp.lon)])
+      .then(([raw, marine]) => {
         const entry = {
-          id:        now,
-          time:      fmtTime(t),
-          lat:       sp.lat.toFixed(3),
-          lon:       sp.lon.toFixed(3),
-          temp:      raw.main?.temp?.toFixed(1)       ?? '--',
-          seaTemp:   seaTemp != null ? seaTemp.toFixed(1) : '--',
-          humidity:  raw.main?.humidity               ?? '--',
-          pressure:  raw.main?.pressure               ?? '--',
-          windSpeed: raw.wind?.speed?.toFixed(1)      ?? '--',
-          windGust:  raw.wind?.gust != null ? raw.wind.gust.toFixed(1) : null,
-          windDeg:   raw.wind?.deg ?? 0,
-          windDir:   degToDir(raw.wind?.deg ?? 0),
-          clouds:    raw.clouds?.all                  ?? 0,
-          desc:      raw.weather?.[0]?.description    ?? '',
+          id:         now,
+          time:       fmtTime(t),
+          lat:        sp.lat.toFixed(3),
+          lon:        sp.lon.toFixed(3),
+          temp:       raw.main?.temp?.toFixed(1)       ?? '--',
+          seaTemp:    marine?.seaTemp != null ? marine.seaTemp.toFixed(1) : '--',
+          windSpeed:  raw.wind?.speed?.toFixed(1)      ?? '--',
+          windGust:   raw.wind?.gust != null ? raw.wind.gust.toFixed(1) : null,
+          windDeg:    raw.wind?.deg ?? 0,
+          windDir:    degToDir(raw.wind?.deg ?? 0),
+          waveDeg:    marine?.waveDeg    ?? null,
+          waveDir:    marine?.waveDeg    != null ? degToDir(marine.waveDeg)    : '--',
+          currentDeg: marine?.currentDeg ?? null,
+          currentDir: marine?.currentDeg != null ? degToDir(marine.currentDeg) : '--',
+          desc:       raw.weather?.[0]?.description    ?? '',
         }
         onWeatherChange?.(entry)
         setLogs(prev => [entry, ...prev].slice(0, MAX_LOGS))
@@ -276,36 +279,6 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
       )}
 
 
-      {/* ── 선박 정보 ── */}
-      <section className={styles.section}>
-        <div className={styles.sectionLabel}>선박</div>
-        {sp ? (
-          <>
-            <div className={styles.coordRow}>
-              <span className={styles.coordVal}>{fmtLat(sp.lat)}</span>
-              <span className={styles.slash}>/</span>
-              <span className={styles.coordVal}>{fmtLon(sp.lon)}</span>
-            </div>
-            <div className={styles.shipStatus}>
-              <span
-                className={styles.arrow}
-                style={{ transform: `rotate(${sp.heading}deg)`, opacity: sp.moving ? 1 : 0.35 }}
-              >↑</span>
-              <span className={styles.dir}>{headingToKo(sp.heading)}</span>
-              <span className={styles.deg}>{Math.round(sp.heading)}°</span>
-              <span className={styles.sep}>·</span>
-              <span className={`${styles.speed} ${sp.moving ? styles.moving : styles.stopped}`}>
-                {sp.moving ? `${sp.knots ?? 16} 노트` : '정박'}
-              </span>
-            </div>
-          </>
-        ) : (
-          <div className={styles.empty}>항해 시작 전</div>
-        )}
-      </section>
-
-      <div className={styles.divider} />
-
       {/* ── 기상 수집 로그 ── */}
       <section className={styles.section}>
 
@@ -328,7 +301,6 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
             <div className={styles.grid}>
               <Cell label="외기온도"  val={latest.temp}    unit="°C"  />
               <Cell label="해수온도"  val={latest.seaTemp} unit="°C"  />
-              <Cell label="습도"      val={latest.humidity}  unit="%"   />
               <Cell label="풍속"      val={latest.windSpeed} unit="m/s" />
               <Cell label="돌풍"      val={latest.windGust ?? '--'} unit={latest.windGust != null ? 'm/s' : ''} gust />
               <Cell
@@ -338,6 +310,28 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
                     <span className={styles.windArrow} style={{ transform: `rotate(${latest.windDeg}deg)` }}>↑</span>
                     {latest.windDir}
                   </span>
+                }
+              />
+              <Cell
+                label="파향"
+                val={
+                  latest.waveDeg != null ? (
+                    <span className={styles.windVal}>
+                      <span className={styles.windArrow} style={{ transform: `rotate(${latest.waveDeg}deg)` }}>↑</span>
+                      {latest.waveDir}
+                    </span>
+                  ) : '--'
+                }
+              />
+              <Cell
+                label="유향"
+                val={
+                  latest.currentDeg != null ? (
+                    <span className={styles.windVal}>
+                      <span className={styles.windArrow} style={{ transform: `rotate(${latest.currentDeg}deg)` }}>↑</span>
+                      {latest.currentDir}
+                    </span>
+                  ) : '--'
                 }
               />
             </div>

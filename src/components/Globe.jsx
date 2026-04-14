@@ -289,6 +289,57 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, o
         },
       })
 
+      // ── 선박 호버 툴팁 ───────────────────────────────────
+      const shipTooltip = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        offset: [0, -20],
+        className: 'ship-tooltip',
+      }).setHTML(`
+        <div style="
+          background: rgba(7,17,28,0.96);
+          border: 1px solid rgba(68,153,204,0.55);
+          border-radius: 10px;
+          padding: 11px 16px;
+          font-family: Inter, 'Noto Sans KR', sans-serif;
+          min-width: 180px;
+        ">
+          <div style="
+            color: #44aadd;
+            font-weight: 800;
+            font-size: 13px;
+            margin-bottom: 8px;
+            letter-spacing: 0.03em;
+          ">LNG선 174,000 ㎥</div>
+          <div style="
+            color: rgba(180,210,240,0.75);
+            font-size: 11.5px;
+            margin-bottom: 6px;
+          ">에버런스 흑백 ME-GI 엔진</div>
+          <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+            <div style="display:flex; justify-content:space-between; gap:16px;">
+              <span style="color:rgba(140,170,200,0.55); font-size:11px;">연비</span>
+              <span style="color:rgba(200,230,255,0.9); font-size:11px; font-weight:600;">5.1 ton/hr</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:16px;">
+              <span style="color:rgba(140,170,200,0.55); font-size:11px;">속도</span>
+              <span style="color:rgba(200,230,255,0.9); font-size:11px; font-weight:600;">16 노트</span>
+            </div>
+          </div>
+        </div>
+      `)
+
+      map.on('mouseenter', 'ship-layer', e => {
+        map.getCanvas().style.cursor = 'pointer'
+        const coords = e.features[0].geometry.coordinates.slice()
+        shipTooltip.setLngLat(coords).addTo(map)
+      })
+
+      map.on('mouseleave', 'ship-layer', () => {
+        map.getCanvas().style.cursor = ''
+        shipTooltip.remove()
+      })
+
       // ── 해로 웨이포인트 마커 (항상 라벨 표시) ───────────
       WAYPOINTS.forEach(wp => {
         // 마커 컨테이너

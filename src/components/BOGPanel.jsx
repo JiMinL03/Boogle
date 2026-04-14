@@ -40,8 +40,11 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange }) {
   const [history, setHistory] = useState([])
   const prevThermalRef = useRef(null)
 
-  const Q_thermal_kW = thermalData?.Q_total ?? 0
-  const Q_kinetic_kW = sloshingData ? +(sloshingData.intensity * 80).toFixed(1) : 0
+  const Q_thermal_kW  = thermalData?.Q_total ?? 0
+  const Ws            = sloshingData?.Ws ?? 1
+  const Q_kinetic_kW  = sloshingData
+    ? +(sloshingData.intensity * 80 * Ws).toFixed(1)
+    : 0
   const current = (Q_thermal_kW > 0 || Q_kinetic_kW > 0)
     ? calcBOG(Q_thermal_kW, Q_kinetic_kW)
     : null
@@ -165,12 +168,18 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange }) {
         <div className={styles.divider} />
         <div className={styles.blockLabel}>입력 파라미터</div>
         <div className={styles.grid}>
-          <Cell label="Q 열유입"   val={Q_thermal_kW.toFixed(1)} unit="kW" />
-          <Cell label="Q 슬로싱"  val={Q_kinetic_kW.toFixed(1)}  unit="kW" accent />
-          <Cell label="Q 합계"    val={current.Q_total}           unit="kW" />
-          <Cell label="ΔH 보정"   val={current.dH}                unit="kJ/kg" />
-          <Cell label="탱크압력"  val={`+${P_GAUGE_KPA}`}         unit="kPa" />
-          <Cell label="슬로싱"    val={sloshingData ? (sloshingData.intensity * 100).toFixed(0) : '--'} unit="%" />
+          <Cell label="열 유입량"       val={Q_thermal_kW.toFixed(1)} unit="kW" />
+          <Cell label="슬로싱 열량"     val={Q_kinetic_kW.toFixed(1)} unit="kW" accent />
+          <Cell label="총 열 유입"      val={current.Q_total}          unit="kW" />
+          <Cell label="기화 잠열"       val={current.dH}               unit="kJ/kg" />
+          <Cell label="탱크 압력"       val={`+${P_GAUGE_KPA}`}        unit="kPa" />
+          {sloshingData?.Hs != null && (
+            <Cell label="보정 파고"     val={sloshingData.Hs}          unit="m"
+                  note={sloshingData.regime ?? null} />
+          )}
+          {sloshingData?.alphaDeg != null && (
+            <Cell label="파향-선수 교차각" val={sloshingData.alphaDeg} unit="°" />
+          )}
         </div>
 
       </section>
@@ -178,13 +187,14 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange }) {
   )
 }
 
-function Cell({ label, val, unit, accent }) {
+function Cell({ label, val, unit, accent, note }) {
   return (
     <div className={styles.cell}>
       <span className={styles.cellLabel}>{label}</span>
       <span className={styles.cellVal}>
         <span className={`${styles.cellNum} ${accent ? styles.accent : ''}`}>{val}</span>
         {unit && <span className={styles.cellUnit}>{unit}</span>}
+        {note && <span className={styles.cellNote}>{note}</span>}
       </span>
     </div>
   )

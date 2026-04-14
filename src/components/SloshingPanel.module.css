@@ -60,6 +60,133 @@
   transition: color 0.4s, border-color 0.4s;
 }
 
+/* ── ISSC 스펙트럼 ── */
+.spectrumWrap {
+  margin-top: 10px;
+  margin-bottom: 2px;
+}
+
+.spectrumLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(200, 225, 255, 0.70);
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.spectrumInfoRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 7px;
+}
+
+.spectrumInfoChip {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid;
+  background: rgba(255, 255, 255, 0.04);
+  letter-spacing: 0.02em;
+}
+
+.spectrumHint {
+  font-size: 9.5px;
+  color: rgba(180, 210, 240, 0.45);
+  margin-top: 5px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+.spectrumChart {
+  width: 100%;
+  display: block;
+  background: rgba(10, 24, 40, 0.55);
+  border: 1px solid rgba(68, 170, 221, 0.15);
+  border-radius: 7px;
+  overflow: visible;
+}
+
+/* ── W_s 슬로싱 가중치 바 ── */
+.wsBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-top: 6px;
+  transition: border-color 0.4s, background 0.4s;
+}
+
+.wsBarResonance {
+  background: rgba(255, 50, 0, 0.08);
+  border-color: rgba(255, 50, 0, 0.40);
+  animation: wsGlow 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes wsGlow {
+  from { box-shadow: 0 0 0px rgba(255, 50, 0, 0); }
+  to   { box-shadow: 0 0 10px rgba(255, 50, 0, 0.35); }
+}
+
+.wsLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wsLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(200, 225, 255, 0.75);
+  letter-spacing: 0.03em;
+}
+
+.wsSub {
+  font-size: 9px;
+  color: rgba(140, 170, 200, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.wsRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.wsVal {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.4s;
+  line-height: 1;
+}
+
+.wsWarn {
+  font-size: 9px;
+  font-weight: 700;
+  color: #ff3300;
+  letter-spacing: 0.05em;
+  animation: wsGlow 0.8s ease-in-out infinite alternate;
+}
+
+.spectrumLegend {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.legendItem {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+}
+
 /* ── 그리드 ── */
 .grid {
   display: grid;
@@ -109,6 +236,14 @@
   font-size: 8px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.5);
+}
+
+.cellSub {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(180, 210, 255, 0.55);
+  margin-left: 3px;
+  letter-spacing: 0.03em;
 }
 
 .empty {

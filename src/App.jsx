@@ -98,7 +98,7 @@ export default function App() {
       {rightVisible && (
         <div className={styles.rightPanels} style={voyageComplete ? { overflowY: 'hidden' } : undefined}>
           <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
-          <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={voyageKey} />
+          <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={voyageKey} shipHeading={shipPosition?.heading ?? null} />
           <BOGPanel thermalData={thermalData} sloshingData={sloshingData} onBOGChange={setBogData} />
         </div>
       )}
