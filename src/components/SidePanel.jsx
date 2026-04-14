@@ -39,7 +39,6 @@ function fmtElapsed(ms) {
 // ── 기상 API ─────────────────────────────────────────────────
 const API_KEY    = 'e3387311caed12676c89e7c4796e3f0f'
 const INTERVAL   = 1500
-const MAX_LOGS   = 20
 
 async function fetchWeather(lat, lon) {
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&appid=${API_KEY}&units=metric&lang=kr`
@@ -148,9 +147,6 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
   }, [sp, isRunning])
 
   // 기상 상태
-  const [logs,    setLogs]    = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState(null)
   const lastFetch = useRef(0)
   const fetching  = useRef(false)
 
@@ -161,8 +157,6 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
     const now = Date.now()
     lastFetch.current = now
     fetching.current  = true
-    setLoading(true)
-    setError(null)
 
     const t = new Date()
     Promise.all([fetchWeather(sp.lat, sp.lon), fetchMarine(sp.lat, sp.lon)])
@@ -185,13 +179,11 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
           desc:       raw.weather?.[0]?.description    ?? '',
         }
         onWeatherChange?.(entry)
-        setLogs(prev => [entry, ...prev].slice(0, MAX_LOGS))
       })
-      .catch(e => setError(e.message))
-      .finally(() => { setLoading(false); fetching.current = false })
+      .catch(() => {})
+      .finally(() => { fetching.current = false })
   }, [sp, isRunning, scrubSeconds])
 
-  const latest = logs[0]
   const isScrubbing     = scrubSeconds > 0 && scrubActiveRef.current
   const scrubKm         = isScrubbing ? SHIP.knots * scrubSeconds / 3600 * 1.852 : traveledKm
   const scrubNm         = isScrubbing ? SHIP.knots * scrubSeconds / 3600         : traveledKm / 1.852
@@ -279,67 +271,6 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
       )}
 
 
-      {/* ── 기상 수집 로그 ── */}
-      <section className={styles.section}>
-
-
-        {error && <div className={styles.errorBar}>⚠ {error}</div>}
-
-        {logs.length === 0 && !loading && (
-          <div className={styles.empty}>선박 이동 시 자동으로 수집됩니다</div>
-        )}
-
-        {latest && (
-          <>
-            <div className={styles.latestPos}>
-              {parseFloat(latest.lat) >= 0 ? 'N' : 'S'}{Math.abs(parseFloat(latest.lat))}°&nbsp;
-              {parseFloat(latest.lon) >= 0 ? 'E' : 'W'}{Math.abs(parseFloat(latest.lon))}°
-              {latest.desc && <span className={styles.weatherDesc}> · {latest.desc}</span>}
-            </div>
-            <div className={styles.fetchedAt}>{latest.time} 수집</div>
-
-            <div className={styles.grid}>
-              <Cell label="외기온도"  val={latest.temp}    unit="°C"  />
-              <Cell label="해수온도"  val={latest.seaTemp} unit="°C"  />
-              <Cell label="풍속"      val={latest.windSpeed} unit="m/s" />
-              <Cell label="돌풍"      val={latest.windGust ?? '--'} unit={latest.windGust != null ? 'm/s' : ''} gust />
-              <Cell
-                label="풍향"
-                val={
-                  <span className={styles.windVal}>
-                    <span className={styles.windArrow} style={{ transform: `rotate(${latest.windDeg}deg)` }}>↑</span>
-                    {latest.windDir}
-                  </span>
-                }
-              />
-              <Cell
-                label="파향"
-                val={
-                  latest.waveDeg != null ? (
-                    <span className={styles.windVal}>
-                      <span className={styles.windArrow} style={{ transform: `rotate(${latest.waveDeg}deg)` }}>↑</span>
-                      {latest.waveDir}
-                    </span>
-                  ) : '--'
-                }
-              />
-              <Cell
-                label="유향"
-                val={
-                  latest.currentDeg != null ? (
-                    <span className={styles.windVal}>
-                      <span className={styles.windArrow} style={{ transform: `rotate(${latest.currentDeg}deg)` }}>↑</span>
-                      {latest.currentDir}
-                    </span>
-                  ) : '--'
-                }
-              />
-            </div>
-          </>
-        )}
-
-      </section>
-
     </div>
   )
 }
@@ -350,21 +281,5 @@ function Stat({ num, unit }) {
       <span className={styles.statNum}>{num}</span>
       <span className={styles.statUnit}>{unit}</span>
     </span>
-  )
-}
-
-function Cell({ label, val, unit, gust }) {
-  return (
-    <div className={styles.cell}>
-      <span className={styles.cellLabel}>{label}</span>
-      <span className={`${styles.cellVal} ${gust ? styles.gust : ''}`}>
-        {typeof val === 'string' || typeof val === 'number' ? (
-          <>
-            <span className={styles.cellNum}>{val}</span>
-            {unit && <span className={styles.cellUnit}>{unit}</span>}
-          </>
-        ) : val}
-      </span>
-    </div>
   )
 }

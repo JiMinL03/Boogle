@@ -6,6 +6,7 @@ import EnginePanel from './components/EnginePanel'
 import ThermalPanel from './components/ThermalPanel'
 import SloshingPanel from './components/SloshingPanel'
 import BOGPanel from './components/BOGPanel'
+import WeatherPanel from './components/WeatherPanel'
 import RouteSelect from './pages/RouteSelect'
 import styles from './App.module.css'
 
@@ -62,6 +63,7 @@ export default function App() {
       />
 
       <ControlsHint />
+      <WeatherPanel latestWeather={latestWeather} />
 
       {leftVisible && (
         <div className={styles.leftPanels} style={voyageComplete ? { overflow: 'hidden', pointerEvents: 'none' } : undefined}>
@@ -78,11 +80,8 @@ export default function App() {
             onElapsedChange={setElapsedMs}
             onWeatherChange={handleWeatherChange}
           />
-          <EnginePanel
-            routeId={routeId}
-            elapsedMs={elapsedMs}
-            isRunning={isRunning}
-          />
+          <EnginePanel routeId={routeId} elapsedMs={elapsedMs} isRunning={isRunning} />
+          <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
         </div>
       )}
 
@@ -97,7 +96,6 @@ export default function App() {
 
       {rightVisible && (
         <div className={styles.rightPanels} style={voyageComplete ? { overflowY: 'hidden' } : undefined}>
-          <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
           <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={voyageKey} shipHeading={shipPosition?.heading ?? null} />
           <BOGPanel thermalData={thermalData} sloshingData={sloshingData} onBOGChange={setBogData} />
         </div>
@@ -105,7 +103,7 @@ export default function App() {
 
       <button
         className={`${styles.toggleTab} ${styles.toggleTabRight}`}
-        style={{ right: rightVisible ? '325px' : '0px' }}
+        style={{ right: rightVisible ? '405px' : '0px' }}
         onClick={() => setRightVisible(v => !v)}
         title={rightVisible ? '오른쪽 패널 숨기기' : '오른쪽 패널 보이기'}
       >

@@ -193,12 +193,14 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
   // BOG 기반 질량 감소 → 충진율 재계산 (시뮬레이션 경과 시간 기준)
   // 계산식: (현재LNG질량 - ((BOG/1000) * 경과시간)) / (현재LNG질량 / 현재충진율) * 100
   useEffect(() => {
-    if (!bogData?.bogKgHr || !elapsedMs) return
+    if (!bogData?.bogKgHr || elapsedMs == null) return
     const deltaMs = elapsedMs - prevElapsedRef.current
-    if (deltaMs <= 0) return
+    if (deltaMs === 0) return
     prevElapsedRef.current = elapsedMs
     const deltaHours = deltaMs / 3_600_000
-    setCurrentMassT(prev => Math.max(prev - (bogData.bogKgHr / 1000) * deltaHours, 0))
+    setCurrentMassT(prev =>
+      Math.min(LNG_MASS_T, Math.max(prev - (bogData.bogKgHr / 1000) * deltaHours, 0))
+    )
   }, [elapsedMs])
 
   const currentFillFrac = currentMassT / TOTAL_CAPACITY_T
@@ -305,26 +307,14 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
                   sub={wsData.nearResonance ? '⚠ 공진 임박' : wsData.r > 0.6 ? '주의' : '안전'}
                   color={wsData.nearResonance ? '#ff3300' : wsData.r > 0.6 ? '#ffcc44' : undefined} />
           )}
+          {wsData != null && (
+            <Cell label="슬로싱 위험도"
+                  val={wsData.Ws > WS_CAP ? `>${WS_CAP}` : wsData.Ws}
+                  unit=""
+                  color={wsData.Ws > 3 ? '#ff3300' : wsData.Ws > 1.5 ? '#ff9800' : '#4caf7d'}
+                  sub={`증폭 ${wsData.daf} × 방향 ${wsData.sinChi}`} />
+          )}
         </div>
-
-        {/* ── 슬로싱 위험도 (W_s) ── */}
-        {wsData != null && (
-          <div className={`${styles.wsBar} ${wsData.nearResonance ? styles.wsBarResonance : ''}`}>
-            <div className={styles.wsLeft}>
-              <span className={styles.wsLabel}>슬로싱 위험도</span>
-              <span className={styles.wsSub}>공진 증폭 {wsData.daf} × 횡파 방향성 {wsData.sinChi}</span>
-            </div>
-            <div className={styles.wsRight}>
-              <span className={styles.wsVal}
-                    style={{ color: wsData.Ws > 3 ? '#ff3300' : wsData.Ws > 1.5 ? '#ff9800' : '#4caf7d' }}>
-                {wsData.Ws > WS_CAP ? `>${WS_CAP}` : wsData.Ws}
-              </span>
-              {wsData.nearResonance && (
-                <span className={styles.wsWarn}>공진 위험</span>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* ── ISSC 파도 에너지 스펙트럼 + 만남 주파수 차트 ── */}
         {issc && (() => {
@@ -488,10 +478,12 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
         <svg
           viewBox="0 0 280 196"
           style={{
-            width: '100%',
-            marginTop: 12,
-            marginBottom: 4,
+            width: '70%',
+            marginTop: 8,
+            marginBottom: 2,
             display: 'block',
+            marginLeft: 'auto',
+            marginRight: 'auto',
             transform: `rotate(${svgTilt}deg)`,
             transformOrigin: '50% 55%',
           }}

@@ -173,13 +173,6 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange }) {
           <Cell label="총 열 유입"      val={current.Q_total}          unit="kW" />
           <Cell label="기화 잠열"       val={current.dH}               unit="kJ/kg" />
           <Cell label="탱크 압력"       val={`+${P_GAUGE_KPA}`}        unit="kPa" />
-          {sloshingData?.Hs != null && (
-            <Cell label="보정 파고"     val={sloshingData.Hs}          unit="m"
-                  note={sloshingData.regime ?? null} />
-          )}
-          {sloshingData?.alphaDeg != null && (
-            <Cell label="파향-선수 교차각" val={sloshingData.alphaDeg} unit="°" />
-          )}
         </div>
 
       </section>
