@@ -334,7 +334,8 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
                   val={wsData.Ws > WS_CAP ? `>${WS_CAP}` : wsData.Ws}
                   unit=""
                   color={wsData.Ws > 3 ? '#ff3300' : wsData.Ws > 1.5 ? '#ff9800' : '#4caf7d'}
-                  sub={`증폭 ${wsData.daf} × 방향 ${wsData.sinChi}`} />
+                  sub={`증폭 ${wsData.daf} × 방향 ${wsData.sinChi}`}
+                  wide />
           )}
         </div>
 
@@ -603,12 +604,13 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
   )
 }
 
-function Cell({ label, val, unit, color, sub }) {
+function Cell({ label, val, unit, color, sub, wide, span2 }) {
   return (
-    <div className={styles.cell}>
+    <div className={`${styles.cell} ${wide ? styles.cellWide : ''} ${span2 ? styles.cellSpan2 : ''}`}>
       <span className={styles.cellLabel}>{label}</span>
       <span className={styles.cellVal}>
-        <span className={styles.cellNum} style={color ? { color } : undefined}>{val}</span>
+        <span className={`${styles.cellNum} ${wide ? styles.cellNumWide : ''}`}
+              style={color ? { color } : undefined}>{val}</span>
         {unit && <span className={styles.cellUnit}>{unit}</span>}
         {sub && <span className={styles.cellSub}>{sub}</span>}
       </span>

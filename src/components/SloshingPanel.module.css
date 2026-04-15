@@ -208,8 +208,8 @@
 /* ── 그리드 ── */
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 5px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
 }
 
 .cell {
@@ -219,31 +219,35 @@
     rgba(255, 255, 255, 0.03) 100%
   );
   border: 1px solid rgba(255, 255, 255, 0.11);
-  border-radius: 10px;
-  padding: 7px 9px;
+  border-radius: 9px;
+  padding: 6px 7px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.25),
     inset 0 -1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .cellLabel {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 600;
-  letter-spacing: 0.03em;
-  color:  rgb(182, 182, 182);
+  letter-spacing: 0.02em;
+  color: rgb(182, 182, 182);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cellVal {
   display: flex;
   align-items: baseline;
   gap: 2px;
+  flex-wrap: wrap;
 }
 
 .cellNum {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #ffffff;
   font-variant-numeric: tabular-nums;
@@ -257,11 +261,35 @@
 }
 
 .cellSub {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   color: rgba(180, 210, 255, 0.55);
-  margin-left: 3px;
-  letter-spacing: 0.03em;
+  margin-left: 2px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.cellSpan2 {
+  grid-column: span 2;
+}
+
+.cellWide {
+  grid-column: span 2;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+}
+
+.cellWide .cellLabel {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.cellNumWide {
+  font-size: 20px !important;
+  font-weight: 800 !important;
 }
 
 .empty {
