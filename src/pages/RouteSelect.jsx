@@ -26,8 +26,6 @@ export default function RouteSelect({ onConfirm }) {
   const [koreanPort, setKoreanPort] = useState('평택터미널')
   const [selected,   setSelected]   = useState(null)   // route id
   const [isSwapped,  setIsSwapped]  = useState(false)  // false: 출항=한국, 입항=목적지
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState(null)
 
   const selectedRoute = ROUTES.find(r => r.id === selected)
 
@@ -63,23 +61,9 @@ export default function RouteSelect({ onConfirm }) {
     setOpen(null)
   }
 
-  async function handleSubmit() {
+  function handleSubmit() {
     if (!selected) return
-    setLoading(true)
-    setError(null)
-    try {
-      const base = import.meta.env.VITE_API_URL ?? ''
-      const res = await fetch(`${base}/api/route`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ routeId: selected }),
-      })
-      if (!res.ok) throw new Error(`서버 오류 ${res.status}`)
-      onConfirm({ routeId: selected, reversed: isSwapped, koreanPort })
-    } catch (e) {
-      setError(e.message)
-      setLoading(false)
-    }
+    onConfirm({ routeId: selected, reversed: isSwapped, koreanPort })
   }
 
   // 왼쪽/오른쪽 표시값
@@ -197,14 +181,12 @@ export default function RouteSelect({ onConfirm }) {
           </div>
         )}
 
-        {error && <div className={styles.error}>⚠ {error}</div>}
-
-        <button
+          <button
           className={styles.submitBtn}
-          disabled={!selected || loading}
+          disabled={!selected}
           onClick={handleSubmit}
         >
-          {loading ? '처리 중…' : '길 찾기'}
+          길 찾기
         </button>
       </div>
     </div>
