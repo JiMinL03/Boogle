@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './BOGPanel.module.css'
 import SloshingBOGModal from './SloshingBOGModal'
@@ -60,9 +60,10 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange, elaps
   const Q_kinetic_kW  = sloshingData
     ? +(sloshingData.intensity * 80 * Ws).toFixed(1)
     : 0
-  const current = (Q_thermal_kW > 0 || Q_kinetic_kW > 0)
-    ? calcBOG(Q_thermal_kW, Q_kinetic_kW)
-    : null
+  const current = useMemo(
+    () => (Q_thermal_kW > 0 || Q_kinetic_kW > 0) ? calcBOG(Q_thermal_kW, Q_kinetic_kW) : null,
+    [Q_thermal_kW, Q_kinetic_kW]
+  )
 
   useEffect(() => {
     if (!current || thermalData === prevThermalRef.current) return
@@ -109,24 +110,28 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange, elaps
     : '#ff5900'
     : '#ffffff'
 
-  // ── 스파크라인 ──────────────────────────────────────────
-  let sparkPath = '', sparkFill = '', minB = 0, maxB = 0
-  if (history.length >= 2) {
-    const bogs = history.map(h => h.bog)
-    minB = Math.min(...bogs)
-    maxB = Math.max(...bogs)
+  // ── 스파크라인 (history가 바뀔 때만 재계산) ────────────
+  const { sparkPath, sparkFill, minB, maxB } = useMemo(() => {
+    if (history.length < 2) return { sparkPath: '', sparkFill: '', minB: 0, maxB: 0 }
+    const bogs  = history.map(h => h.bog)
+    const minB  = Math.min(...bogs)
+    const maxB  = Math.max(...bogs)
     const rangeB = Math.max(maxB - minB, 0.5)
-    const pts = history.map((h, i) => ({
+    const pts   = history.map((h, i) => ({
       x: (i / (history.length - 1)) * CHART_W,
       y: CHART_H - ((h.bog - minB) / rangeB) * (CHART_H - 8) - 4,
     }))
-    sparkPath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-    sparkFill = [
-      `M ${pts[0].x.toFixed(1)},${CHART_H}`,
-      ...pts.map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`),
-      `L ${pts[pts.length - 1].x.toFixed(1)},${CHART_H} Z`,
-    ].join(' ')
-  }
+    return {
+      sparkPath: pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '),
+      sparkFill: [
+        `M ${pts[0].x.toFixed(1)},${CHART_H}`,
+        ...pts.map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`),
+        `L ${pts[pts.length - 1].x.toFixed(1)},${CHART_H} Z`,
+      ].join(' '),
+      minB,
+      maxB,
+    }
+  }, [history])
 
   if (!current) {
     return (

@@ -30,8 +30,9 @@ export default function App() {
   const [bogData,        setBogData]        = useState(null)
   const [leftVisible,    setLeftVisible]    = useState(true)
   const [rightVisible,   setRightVisible]   = useState(true)
-  const [editMode,       setEditMode]       = useState(false)
-  const [customCoords,   setCustomCoords]   = useState(null)
+  const [editMode,          setEditMode]          = useState(false)
+  const [customCoords,      setCustomCoords]      = useState(null)
+  const [isAutoNavigating,  setIsAutoNavigating]  = useState(false)
 
   useEffect(() => {
     fetch('/api/route')
@@ -46,6 +47,7 @@ export default function App() {
   const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null); setEditMode(false); setCustomCoords(null) }, [])
   const handleReselect       = useCallback(() => { setIsRunning(false); setVoyageComplete(false); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null); setPage('select'); setEditMode(false); setCustomCoords(null) }, [])
   const handleRouteEdit      = useCallback(setCustomCoords, [])
+  const handleAutoStepChange = useCallback(step => setIsAutoNavigating(!!step), [])
   const handleCoordsChange   = useCallback(setCoords,       [])
   const handleLandWarning    = useCallback(setOnLand,       [])
   const handleShipPosition   = useCallback(setShipPosition, [])
@@ -88,6 +90,7 @@ export default function App() {
             onElapsedChange={setElapsedMs}
             onWeatherChange={handleWeatherChange}
             customCoords={customCoords}
+            onAutoStepChange={handleAutoStepChange}
           />
           <EnginePanel bogData={bogData} isRunning={isRunning} />
           <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
@@ -105,8 +108,8 @@ export default function App() {
 
       {rightVisible && (
         <div className={styles.rightPanels}>
-          <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={voyageKey} shipHeading={shipPosition?.heading ?? null} reversed={reversed} />
-          <BOGPanel thermalData={thermalData} sloshingData={sloshingData} onBOGChange={setBogData} elapsedMs={elapsedMs} key={voyageKey} />
+          <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={`sloshing-${voyageKey}`} shipHeading={shipPosition?.heading ?? null} reversed={reversed} />
+          <BOGPanel thermalData={thermalData} sloshingData={sloshingData} onBOGChange={setBogData} elapsedMs={elapsedMs} key={`bog-${voyageKey}`} />
         </div>
       )}
 
@@ -139,7 +142,7 @@ export default function App() {
         </button>
 
         {/* ── 편집 모드 버튼 ── */}
-        {!isRunning && !voyageComplete && !editMode && (
+        {!isRunning && !isAutoNavigating && !voyageComplete && !editMode && (
           <button
             className={`${styles.reselectBtn} ${styles.editBtn}`}
             onClick={() => {
@@ -162,8 +165,11 @@ export default function App() {
             <span className={styles.editHint}>클릭으로 경유지 추가</span>
             <button
               className={`${styles.reselectBtn} ${styles.editUndoBtn}`}
-              disabled={!customCoords || customCoords.length === 0}
-              onClick={() => setCustomCoords(prev => prev && prev.length > 0 ? prev.slice(0, -1) : prev)}
+              disabled={!customCoords || customCoords.length <= (shipPosition?.wpIdx ?? 0) + 1}
+              onClick={() => {
+                const minLen = (shipPosition?.wpIdx ?? 0) + 1
+                setCustomCoords(prev => prev && prev.length > minLen ? prev.slice(0, -1) : prev)
+              }}
             >
               ↩ 취소
             </button>

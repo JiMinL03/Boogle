@@ -64,7 +64,7 @@ function fmtTime(d) {
 }
 
 // ────────────────────────────────────────────────────────────
-export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageComplete, voyageKey, scrubSeconds, onScrubChange, onElapsedChange, onWeatherChange, customCoords }) {
+export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageComplete, voyageKey, scrubSeconds, onScrubChange, onElapsedChange, onWeatherChange, customCoords, onAutoStepChange }) {
   const route  = ROUTES.find(r => r.id === routeId)
   const activeCoords = customCoords || route?.coords
   const distKm = activeCoords ? Math.round(routeDistanceKm(activeCoords)) : null
@@ -124,6 +124,9 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
 
   // 자동 항해 완료 시 중단
   useEffect(() => { if (voyageComplete) setAutoStep(null) }, [voyageComplete])
+
+  // autoStep 변경 시 부모에 알림 (항로 편집 버튼 숨기기에 활용)
+  useEffect(() => { onAutoStepChange?.(autoStep) }, [autoStep])
 
   // 자동 항해 인터벌 (2초마다 autoStep만큼 전진)
   useEffect(() => {
@@ -283,49 +286,6 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
                 </div>
               </>
             )}
-
-            <input
-              type="range"
-              className={styles.scrubber}
-              min={0}
-              max={Math.floor(totalVoyageSeconds / SCRUB_STEP) * SCRUB_STEP}
-              step={SCRUB_STEP}
-              value={Math.round(scrubSeconds / SCRUB_STEP) * SCRUB_STEP}
-              disabled={voyageComplete}
-              onChange={e => {
-                const now = Date.now()
-                if (now - lastScrubRef.current < 2000) return   // 2초 간격 제한
-                lastScrubRef.current = now
-
-                const raw        = Number(e.target.value)
-                const current    = Math.round(scrubSeconds / SCRUB_STEP) * SCRUB_STEP
-                const maxSnapped = Math.floor(totalVoyageSeconds / SCRUB_STEP) * SCRUB_STEP
-
-                // 드래그 거리와 무관하게 방향만 읽어 ±1 스텝(12시간)만 이동
-                let val
-                if (raw > current)      val = Math.min(current + SCRUB_STEP, maxSnapped)
-                else if (raw < current) val = Math.max(current - SCRUB_STEP, 0)
-                else return
-
-                onScrubChange(val)
-                onElapsedChange?.(val * 1000)
-                if (isRunning) {
-                  accumulatedMsRef.current = val * 1000
-                  traveledKmRef.current    = SHIP.knots * val / 3600 * 1.852
-                  if (runningStartRef.current !== null) runningStartRef.current = Date.now()
-                  prevPosRef.current = null
-                  setTraveledKm(traveledKmRef.current)
-                  setElapsedMs(accumulatedMsRef.current)
-                  scrubActiveRef.current = false
-                } else {
-                  scrubActiveRef.current = true
-                }
-              }}
-            />
-            <div className={styles.scrubTicks}>
-              <span>출발</span>
-              <span>{eta}일</span>
-            </div>
 
             {/* ── 자동 항해 버튼 ── */}
             <div className={styles.autoStepRow}>

@@ -485,17 +485,32 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, o
           if (Math.sqrt(dlng * dlng + dlat * dlat) < 0.01) return
         }
         const newCoords = [...current, [lng, lat]]
+        // React 상태 사이클 전에 지도 소스 즉시 갱신 → 경유지 추가 지연 제거
+        const rid = routeIdRef.current
+        if (rid && newCoords.length >= 2) {
+          map.getSource(`route-${rid}`)?.setData({
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: newCoords },
+            properties: {},
+          })
+        }
         onRouteEditRef.current?.(newCoords)
       })
 
       // ── 마우스 이동: 육지 감지 + 선박 목표 갱신 ─────────
+      let lastCoordsMs = 0
       map.on('mousemove', e => {
         const { lng, lat } = e.lngLat
         if (middleDown) {
           target.lon = lng
           target.lat = lat
         }
-        coordsCbRef.current?.({ lat: lat.toFixed(3), lon: lng.toFixed(3) })
+        // 좌표 표시는 100ms 쓰로틀 (mousemove 과호출 방지)
+        const now = Date.now()
+        if (now - lastCoordsMs >= 100) {
+          lastCoordsMs = now
+          coordsCbRef.current?.({ lat: lat.toFixed(3), lon: lng.toFixed(3) })
+        }
       })
 
       map.on('mouseleave', () => {
@@ -512,20 +527,26 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, o
       const SHIP_KNOTS    = SHIP.knots
       const SPEED_MS      = SHIP_KNOTS * 1852 / 3600  // ≈ 8.231 m/s
       const M_PER_DEG_LAT = 111320                    // 위도 1° = 111,320 m (고정)
+
+      // ── 줌 캐시 (매 프레임 map.getZoom() 호출 방지) ──────
+      let cachedZoom = map.getZoom()
+      map.on('zoom', () => { cachedZoom = map.getZoom() })
+
       // 줌 ≤5 → 1000배속, 줌 ≥15 → 1배속, 사이는 로그 보간
       function getTimeScale() {
-        const zoom = map.getZoom()
+        const zoom = cachedZoom
         const ZOOM_MIN = 5, ZOOM_MAX = 15
         const SCALE_MIN = 1, SCALE_MAX = 1.26
         const t = Math.max(0, Math.min(1, (zoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN)))
         // 로그 보간: 시각적으로 자연스러운 배속 변화
         return SCALE_MAX * Math.pow(SCALE_MIN / SCALE_MAX, t)
       }
-      let lastTime     = performance.now()
-      let lastMoveTime = Date.now()
-      let wakeOpacity  = 0
-      let shipPosFrame = 0
-      let isMoving     = false
+      let lastTime       = performance.now()
+      let lastMoveTime   = Date.now()
+      let wakeOpacity    = 0
+      let shipPosFrame   = 0
+      let isMoving       = false
+      let mapUpdateFrame = 0   // setData 프레임 쓰로틀용
 
       // ── 애니메이션 루프: 실거리(m) 기반 이동 ─────────────
       function animate() {
@@ -566,7 +587,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, o
             // wpIdx 동기화: 현재 위치 이후 첫 웨이포인트로 맞춤
             if (autoRouteRef.current) autoRouteRef.current.wpIdx = pos.wpIdx
             // isRunning 여부와 무관하게 위치 전송 (기상 수집 등에 활용)
-            shipPosCbRef.current?.({ lat: pos.lat, lon: pos.lon, heading, moving: false, knots: 16 })
+            shipPosCbRef.current?.({ lat: pos.lat, lon: pos.lon, heading, moving: false, knots: 16, wpIdx: pos.wpIdx ?? 0 })
           }
         }
 
@@ -646,7 +667,7 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, o
             heading  = calcBearingDeg(prevLon, prevLat, ship.lon, ship.lat)
             isMoving = true
             wake.push([ship.lon, ship.lat])
-            if (wake.length > 200) wake.shift()
+            if (wake.length > 100) wake.shift()
             lastMoveTime = Date.now()
             wakeOpacity  = 1
           } else {
@@ -685,19 +706,21 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, o
               heading,
               moving:  isMoving,
               knots:   SHIP_KNOTS,
+              wpIdx:   autoRouteRef.current?.wpIdx ?? 0,
             })
           }
         }
 
-        // GeoJSON 소스 실시간 갱신
-        map.getSource('ship')?.setData({
-          type:       'Feature',
-          geometry:   { type: 'Point', coordinates: [ship.lon, ship.lat] },
-          properties: { bearing: heading },
-        })
-
-        const coords = wake.length >= 2 ? wake : [[ship.lon, ship.lat], [ship.lon, ship.lat]]
-        if (wake.length >= 1) {
+        // GeoJSON 소스: 3프레임마다 갱신 (매 프레임 setData 오버헤드 절감)
+        mapUpdateFrame++
+        if (mapUpdateFrame >= 3) {
+          mapUpdateFrame = 0
+          map.getSource('ship')?.setData({
+            type:       'Feature',
+            geometry:   { type: 'Point', coordinates: [ship.lon, ship.lat] },
+            properties: { bearing: heading },
+          })
+          const coords = wake.length >= 2 ? wake : [[ship.lon, ship.lat], [ship.lon, ship.lat]]
           map.getSource('wake')?.setData({
             type:       'Feature',
             geometry:   { type: 'LineString', coordinates: coords },

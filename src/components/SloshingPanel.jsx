@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import styles from './SloshingPanel.module.css'
 import { SHIP } from '../constants/ship'
 import WaveInfoModal from './WaveInfoModal'
@@ -217,13 +217,26 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
   const currentVolM3  = Math.round(currentMassT * 1000 / RHO_LNG)
   const consumedVolM3 = Math.max(0, initialVolM3 - currentVolM3)
 
-  const s    = calcSloshing(weather, currentFillFrac)
-  const issc = calcISSC(s.Hs)
+  // ── 무거운 계산: weather/fillFrac이 바뀔 때만 재계산 (RAF phase 변경 시 스킵) ──
+  const s = useMemo(
+    () => calcSloshing(weather, currentFillFrac),
+    [weather, currentFillFrac]
+  )
+  const issc = useMemo(() => calcISSC(s.Hs), [s.Hs])
 
-  const chiDeg   = calcEncounterAngle(weather?.waveDeg, shipHeading)
-  const enc      = calcEncounterSpectrum(issc?.points ?? null, SHIP.knots, chiDeg)
-  const omegaTank = calcOmegaTank(currentFillFrac)
-  const wsData   = calcSloshingWeight(enc?.omegaE_peak ?? null, omegaTank, chiDeg)
+  const chiDeg    = useMemo(
+    () => calcEncounterAngle(weather?.waveDeg, shipHeading),
+    [weather?.waveDeg, shipHeading]
+  )
+  const enc       = useMemo(
+    () => calcEncounterSpectrum(issc?.points ?? null, SHIP.knots, chiDeg),
+    [issc, chiDeg]
+  )
+  const omegaTank = useMemo(() => calcOmegaTank(currentFillFrac), [currentFillFrac])
+  const wsData    = useMemo(
+    () => calcSloshingWeight(enc?.omegaE_peak ?? null, omegaTank, chiDeg),
+    [enc?.omegaE_peak, omegaTank, chiDeg]
+  )
 
   useEffect(() => {
     onSloshingChange?.({
@@ -251,6 +264,56 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
     rafRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafRef.current)
   }, [s.intensity])
+
+  // ── ISSC 차트 SVG 데이터: issc/enc가 바뀔 때만 재계산 (RAF phase 변경 시 스킵) ──
+  const spectrumPaths = useMemo(() => {
+    if (!issc) return null
+    const CW = 228, CH = 72
+    const omegaMin = 0.15, omegaMax = 3.5
+    const omegaToX = w => ((w - omegaMin) / (omegaMax - omegaMin)) * CW
+
+    const pts = issc.points.map((p, i) => ({
+      x: (i / (ISSC_N - 1)) * CW,
+      y: issc.Smax > 0 ? CH - (p.S / issc.Smax) * (CH - 8) - 4 : CH - 4,
+    }))
+    const linePath = pts.map((p, i) =>
+      `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`
+    ).join(' ')
+    const fillPath = [
+      `M ${pts[0].x.toFixed(1)},${CH}`,
+      ...pts.map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`),
+      `L ${pts[pts.length - 1].x.toFixed(1)},${CH} Z`,
+    ].join(' ')
+    const pk = pts[issc.peakIdx]
+
+    let encLine = null, encFill = null, encPkX = null, encPkY = null
+    if (enc) {
+      const ePts = enc.enc
+        .map(p => ({
+          x: omegaToX(p.omega_e),
+          y: issc.Smax > 0 ? CH - (p.S / issc.Smax) * (CH - 8) - 4 : CH - 4,
+        }))
+        .filter(p => p.x >= 0 && p.x <= CW)
+      if (ePts.length >= 2) {
+        encLine = ePts.map((p, i) =>
+          `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`
+        ).join(' ')
+        encFill = [
+          `M ${ePts[0].x.toFixed(1)},${CH}`,
+          ...ePts.map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`),
+          `L ${ePts[ePts.length - 1].x.toFixed(1)},${CH} Z`,
+        ].join(' ')
+        const epk = ePts.reduce((m, p) => p.y < m.y ? p : m, ePts[0])
+        encPkX = epk.x.toFixed(1)
+        encPkY = epk.y.toFixed(1)
+      }
+    }
+
+    const T1_s = issc.T1
+    const Te_s = enc ? +(2 * Math.PI / enc.omegaE_peak).toFixed(2) : null
+
+    return { CW, CH, omegaToX, linePath, fillPath, pk, encLine, encFill, encPkX, encPkY, T1_s, Te_s }
+  }, [issc, enc])
 
   if (!weather) {
     return (
@@ -340,57 +403,9 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
         </div>
 
         {/* ── ISSC 파도 에너지 스펙트럼 + 만남 주파수 차트 ── */}
-        {issc && (() => {
-          const CW = 228, CH = 72
-          const omegaMin = 0.15, omegaMax = 3.5
-          const omegaToX = w => ((w - omegaMin) / (omegaMax - omegaMin)) * CW
-
-          // ── 원본 ISSC 스펙트럼 (파란색) ──
-          const pts = issc.points.map((p, i) => ({
-            x: (i / (ISSC_N - 1)) * CW,
-            y: CH - (p.S / issc.Smax) * (CH - 8) - 4,
-          }))
-          const linePath = pts.map((p, i) =>
-            `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`
-          ).join(' ')
-          const fillPath = [
-            `M ${pts[0].x.toFixed(1)},${CH}`,
-            ...pts.map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`),
-            `L ${pts[pts.length - 1].x.toFixed(1)},${CH} Z`,
-          ].join(' ')
-          const pk = pts[issc.peakIdx]
-
-          // ── 만남 스펙트럼 (주황색): ω_e 축으로 이동한 동일 에너지 ──
-          let encLine = null, encFill = null, encPkX = null, encPkY = null
-          if (enc) {
-            const ePts = enc.enc
-              .map(p => ({
-                x: omegaToX(p.omega_e),
-                y: CH - (p.S / issc.Smax) * (CH - 8) - 4,
-              }))
-              .filter(p => p.x >= 0 && p.x <= CW)
-
-            if (ePts.length >= 2) {
-              encLine = ePts.map((p, i) =>
-                `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`
-              ).join(' ')
-              encFill = [
-                `M ${ePts[0].x.toFixed(1)},${CH}`,
-                ...ePts.map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`),
-                `L ${ePts[ePts.length - 1].x.toFixed(1)},${CH} Z`,
-              ].join(' ')
-              const epk = ePts.reduce((m, p) => p.y < m.y ? p : m, ePts[0])
-              encPkX = epk.x.toFixed(1)
-              encPkY = epk.y.toFixed(1)
-            }
-          }
-
+        {spectrumPaths && (() => {
+          const { CW, CH, omegaToX, linePath, fillPath, pk, encLine, encFill, encPkX, encPkY, T1_s, Te_s } = spectrumPaths
           const ticks = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
-
-          // 주기(초)로 변환 — 비전공자에게 직관적
-          const T1_s   = issc.T1
-          const Te_s   = enc ? +(2 * Math.PI / enc.omegaE_peak).toFixed(2) : null
-
           return (
             <div className={styles.spectrumWrap}
                  onClick={() => setModalOpen(true)}
@@ -435,7 +450,7 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
                 {/* x축 눈금 (주기(초) 표기 → 직관적) */}
                 {ticks.map(w => {
                   const x   = omegaToX(w)
-                  const sec = (2 * Math.PI / w).toFixed(1)   // rad/s → 초
+                  const sec = (2 * Math.PI / w).toFixed(1)
                   return (
                     <g key={w}>
                       <line x1={x} y1={CH - 3} x2={x} y2={CH}
