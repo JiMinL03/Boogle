@@ -1,10 +1,12 @@
 import express from 'express'
 import cors    from 'cors'
+import path    from 'path'
+import { fileURLToPath } from 'url'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app  = express()
 const PORT = process.env.PORT || 3001
 
-// CORS: Vercel 프론트엔드 허용
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
 }))
@@ -36,6 +38,15 @@ app.post('/api/route', (req, res) => {
 // 저장된 항로 조회
 app.get('/api/route', (_req, res) => {
   res.json(savedRoute)
+})
+
+// 빌드된 React 프론트엔드 서빙
+const distPath = path.join(__dirname, 'dist')
+app.use(express.static(distPath))
+
+// SPA 라우팅 - /api 제외한 모든 경로를 index.html로
+app.get(/^(?!\/api).*/, (_req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'))
 })
 
 app.listen(PORT, () => {
