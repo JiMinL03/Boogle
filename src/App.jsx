@@ -89,7 +89,7 @@ export default function App() {
             onWeatherChange={handleWeatherChange}
             customCoords={customCoords}
           />
-          <EnginePanel routeId={routeId} elapsedMs={elapsedMs} isRunning={isRunning} />
+          <EnginePanel bogData={bogData} isRunning={isRunning} />
           <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
         </div>
       )}

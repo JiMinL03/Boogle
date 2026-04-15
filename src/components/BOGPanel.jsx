@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import styles from './BOGPanel.module.css'
 import SloshingBOGModal from './SloshingBOGModal'
+import { SHIP } from '../constants/ship'
+
+const ENGINE_BOG_KG_HR   = SHIP.engineBOGTonPerHour * 1000   // 3,000 kg/hr
+const RE_LIQ_CAPACITY_KG = SHIP.reLiqCapacityT * 1000        // 20,000 kg
+const THRESHOLD_FRAC     = 0.75
 
 
 // ── 탱크 물성 상수 ─────────────────────────────────────────
@@ -42,8 +48,12 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange, elaps
   const [history, setHistory]         = useState([])
   const [modalOpen, setModalOpen]     = useState(false)
   const [accumulated, setAccumulated] = useState(0)
-  const prevThermalRef  = useRef(null)
-  const prevElapsedRef  = useRef(0)
+  const [reLiqModal, setReLiqModal]   = useState(false)
+  const [reLiqCount, setReLiqCount]   = useState(0)
+  const prevThermalRef     = useRef(null)
+  const prevElapsedRef     = useRef(0)
+  const reLiqTriggeredRef  = useRef(false)
+  const accAtTriggerRef    = useRef(0)
 
   const Q_thermal_kW  = thermalData?.Q_total ?? 0
   const Ws            = sloshingData?.Ws ?? 1
@@ -61,18 +71,37 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange, elaps
   }, [thermalData])
 
   useEffect(() => {
-    onBOGChange?.(current)
-  }, [Q_thermal_kW, Q_kinetic_kW])
+    const payload = current
+      ? { ...current, accumulatedKg: accumulated, reLiqCapacityKg: RE_LIQ_CAPACITY_KG }
+      : null
+    onBOGChange?.(payload)
+  }, [Q_thermal_kW, Q_kinetic_kW, accumulated])
 
   useEffect(() => {
     if (elapsedMs == null || !current) return
     const deltaMs = elapsedMs - prevElapsedRef.current
     if (deltaMs === 0) return
     prevElapsedRef.current = elapsedMs
-    const deltaHours = deltaMs / 3_600_000
-    const deltaBOG   = current.bogKgHr * deltaHours
+    const deltaHours    = deltaMs / 3_600_000
+    const netBOGKgHr    = Math.max(0, current.bogKgHr - ENGINE_BOG_KG_HR)
+    const deltaBOG      = netBOGKgHr * deltaHours
     setAccumulated(prev => Math.max(0, prev + deltaBOG))
   }, [elapsedMs])
+
+  // 75% 도달 시 재액화 모달 + 초기화
+  useEffect(() => {
+    const threshold = RE_LIQ_CAPACITY_KG * THRESHOLD_FRAC
+    if (accumulated >= threshold && !reLiqTriggeredRef.current) {
+      reLiqTriggeredRef.current = true
+      accAtTriggerRef.current   = accumulated
+      setReLiqCount(c => c + 1)
+      setReLiqModal(true)
+      setAccumulated(0)
+    }
+    if (accumulated < threshold * 0.5) {
+      reLiqTriggeredRef.current = false
+    }
+  }, [accumulated])
 
   const borRisk = current
     ? current.bor < 0.10 ? '#4caf7d'
@@ -147,16 +176,44 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange, elaps
         </div>
 
         {/* ── BOG 누적량 ── */}
-        <div className={styles.accumWrap}>
-          <div className={styles.accumLabel}>BOG 누적량</div>
-          <div className={styles.accumVal}>
-            <span className={styles.accumNum}>{(accumulated / 1000).toFixed(4)}</span>
-            <span className={styles.accumUnit}>t</span>
-          </div>
-          <div className={styles.accumBar}>
-            <div className={styles.accumBarFill} style={{ width: `${Math.min((accumulated % 1000) / 10, 100)}%` }} />
-          </div>
-        </div>
+        {(() => {
+          const accumPct = Math.min((accumulated / RE_LIQ_CAPACITY_KG) * 100, 100)
+          const isAlert  = accumPct >= 75
+          return (
+            <div className={styles.accumWrap} style={isAlert ? { borderColor: 'rgba(255,50,50,0.5)', background: 'rgba(255,50,50,0.08)' } : {}}>
+              <div className={styles.accumHeader}>
+                <div className={styles.accumLabel} style={isAlert ? { color: '#ff3333' } : {}}>
+                  BOG 누적량 {isAlert && '⚠'}
+                </div>
+                <div className={styles.accumDailyAvg}>
+                  엔진 소모 <span className={styles.accumDailyNum}>{SHIP.engineBOGTonPerHour}</span>
+                  <span className={styles.accumDailyUnit}> t/hr</span>
+                </div>
+              </div>
+              <div className={styles.accumVal}>
+                <span className={styles.accumNum} style={isAlert ? { color: '#ff3333' } : {}}>
+                  {(accumulated / 1000).toFixed(3)}
+                </span>
+                <span className={styles.accumUnit}>t</span>
+                <span style={{ marginLeft: 6, fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+                  / {SHIP.reLiqCapacityT} t ({accumPct.toFixed(1)}%)
+                </span>
+              </div>
+              <div className={styles.accumBar}>
+                <div className={styles.accumBarFill}
+                     style={{
+                       width:      `${accumPct}%`,
+                       background: isAlert
+                         ? 'linear-gradient(90deg,#cc0000,#ff3333)'
+                         : 'linear-gradient(90deg,#ff5900,#ff9800)',
+                     }} />
+              </div>
+              <div style={{ marginTop: 4, fontSize: 9, color: 'rgba(255,255,255,0.25)', textAlign: 'right' }}>
+                75% 도달 시 자동 재액화 · 재액화 횟수: {reLiqCount}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ── 차트 ── */}
         <div className={styles.chartWrap}>
@@ -217,7 +274,84 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange, elaps
         Q_kinetic_kW={Q_kinetic_kW}
         dH={current.dH}
       />
+
+      <ReLiqModal
+        open={reLiqModal}
+        onClose={() => setReLiqModal(false)}
+        accumulatedKg={accAtTriggerRef.current}
+        count={reLiqCount}
+      />
     </div>
+  )
+}
+
+// ── 재액화 모달 (3초 자동 닫힘) ───────────────────────────
+function ReLiqModal({ open, onClose, accumulatedKg, count }) {
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  useEffect(() => {
+    if (!open) return
+    const timer = setTimeout(() => onCloseRef.current(), 3000)
+    return () => clearTimeout(timer)
+  }, [open])
+
+  if (!open) return null
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 500,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: 360,
+          background: 'linear-gradient(135deg,rgba(12,22,36,0.97),rgba(8,16,28,0.98))',
+          border: '1px solid rgba(255,255,255,0.18)',
+          borderRadius: 20,
+          padding: '28px 28px 24px',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.12)',
+          textAlign: 'center',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{
+          fontSize: 13, fontWeight: 700, letterSpacing: '0.1em',
+          color: '#ff5900', textTransform: 'uppercase', marginBottom: 6,
+        }}>
+          재액화 시스템 가동
+        </div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 20 }}>
+          BOG 누적량이 75%에 도달했습니다
+        </div>
+
+        <div style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 12, padding: '14px 16px', marginBottom: 14,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+            <span style={{ color: 'rgba(255,255,255,0.45)' }}>처리 BOG량</span>
+            <span style={{ color: '#ffffff', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+              {(accumulatedKg / 1000).toFixed(3)} t
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+            <span style={{ color: 'rgba(255,255,255,0.45)' }}>재액화 횟수</span>
+            <span style={{ color: '#ffffff', fontWeight: 700 }}>{count}회</span>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+          BOG 누적량이 초기화되었습니다 · 3초 후 자동으로 닫힙니다
+        </div>
+      </div>
+    </div>,
+    document.body
   )
 }
 
