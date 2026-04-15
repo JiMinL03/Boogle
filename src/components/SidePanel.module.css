@@ -177,6 +177,55 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── 자동 항해 버튼 ──────────────────────────────────────── */
+.autoStepRow {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.autoStepBtn {
+  flex: 1;
+  padding: 5px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.autoStepBtn:hover:not(:disabled) {
+  background: rgba(255, 170, 68, 0.15);
+  border-color: rgba(255, 170, 68, 0.4);
+  color: #ffaa44;
+}
+
+.autoStepBtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.autoStepActive {
+  background: rgba(255, 170, 68, 0.18) !important;
+  border-color: rgba(255, 170, 68, 0.55) !important;
+  color: #ffaa44 !important;
+  box-shadow: 0 0 8px rgba(255, 170, 68, 0.2);
+}
+
+.autoStepStatus {
+  margin-top: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffaa44;
+  text-align: center;
+  animation: pulse 1.5s infinite;
+}
+
 /* ── 선박 ────────────────────────────────────────────────── */
 .coordRow {
   display: flex;

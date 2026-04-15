@@ -202,3 +202,26 @@
 .runBtnComplete:hover {
   background: rgba(76, 175, 125, 0.15);
 }
+
+/* ── 마우스 커서 위도·경도 오버레이 ─────────────────────── */
+.cursorCoords {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(7, 17, 28, 0.78);
+  border: 1px solid rgba(68, 153, 204, 0.28);
+  border-radius: 20px;
+  padding: 5px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(160, 210, 255, 0.88);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  z-index: 200;
+  pointer-events: none;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}

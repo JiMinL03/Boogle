@@ -213,6 +213,10 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
 
   const currentFillFrac = currentMassT / TOTAL_CAPACITY_T
 
+  const initialVolM3  = Math.round(initialMassT * 1000 / RHO_LNG)
+  const currentVolM3  = Math.round(currentMassT * 1000 / RHO_LNG)
+  const consumedVolM3 = Math.max(0, initialVolM3 - currentVolM3)
+
   const s    = calcSloshing(weather, currentFillFrac)
   const issc = calcISSC(s.Hs)
 
@@ -555,15 +559,27 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
           <path d={CARGO_TANK} fill="none" stroke="#3a7ab0" strokeWidth="1.5" />
 
           {/* 카고 용량 (탱크 내부, 액면 위에 겹침) */}
-          <text x="140" y="88" textAnchor="middle"
-                fill="rgb(255, 255, 255)" fontSize="26" fontWeight="800"
+          <text x="140" y="84" textAnchor="middle"
+                fill="rgb(255, 255, 255)" fontSize="24" fontWeight="800"
                 fontFamily="'SF Mono','Fira Code','Consolas',monospace">
             {Math.round(currentMassT).toLocaleString()}
           </text>
-          <text x="140" y="106" textAnchor="middle"
-                fill="rgba(180,225,255,0.55)" fontSize="11" fontWeight="600" letterSpacing="1">
+          <text x="140" y="100" textAnchor="middle"
+                fill="rgba(180,225,255,0.55)" fontSize="10" fontWeight="600" letterSpacing="1">
             ton
           </text>
+
+          {/* 174,000 m³ 기준 소비량 */}
+          <text x="140" y="114" textAnchor="middle"
+                fill="rgba(180,225,255,0.35)" fontSize="7.5" fontWeight="600" letterSpacing="0.3">
+            174,000 m³ 출발
+          </text>
+          {consumedVolM3 > 0 && (
+            <text x="140" y="125" textAnchor="middle"
+                  fill="rgba(255,120,80,0.72)" fontSize="7.5" fontWeight="700" letterSpacing="0.3">
+              ▼ {consumedVolM3.toLocaleString()} m³ 소비
+            </text>
+          )}
 
           {/* 충전율 텍스트 */}
           <text x="140" y="148" textAnchor="middle"

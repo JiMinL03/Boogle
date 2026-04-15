@@ -64,7 +64,7 @@ function fmtTime(d) {
 }
 
 // ────────────────────────────────────────────────────────────
-export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageKey, scrubSeconds, onScrubChange, onElapsedChange, onWeatherChange }) {
+export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageComplete, voyageKey, scrubSeconds, onScrubChange, onElapsedChange, onWeatherChange }) {
   const route  = ROUTES.find(r => r.id === routeId)
   const distKm = route ? Math.round(routeDistanceKm(route.coords)) : null
   const distNm = distKm ? Math.round(distKm / 1.852) : null
@@ -91,6 +91,22 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
 
   // 슬라이더를 직접 움직인 상태인지 추적 (라이브 카운트와 구분)
   const scrubActiveRef = useRef(false)
+  // 스크럽 쓰로틀 (2초 간격 제한)
+  const lastScrubRef = useRef(0)
+  const SCRUB_STEP   = 3_600    // 1시간 = 3,600초
+
+  // 자동 항해
+  const AUTO_OPTIONS = [
+    { label: '10m', secs: 600    },
+    { label: '1h',  secs: 3_600  },
+    { label: '2h',  secs: 7_200  },
+    { label: '6h',  secs: 21_600 },
+  ]
+  const [autoStep, setAutoStep]   = useState(null)
+  const scrubSecondsRef           = useRef(scrubSeconds)
+  const isRunningRef              = useRef(isRunning)
+  useEffect(() => { scrubSecondsRef.current = scrubSeconds }, [scrubSeconds])
+  useEffect(() => { isRunningRef.current    = isRunning    }, [isRunning])
 
   // elapsedMs 변경 시 App으로 전파 (EnginePanel 등에서 활용)
   useEffect(() => { onElapsedChange?.(elapsedMs) }, [elapsedMs, onElapsedChange])
@@ -104,6 +120,37 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
     runningStartRef.current  = null
     prevPosRef.current       = null
   }, [voyageKey])
+
+  // 자동 항해 완료 시 중단
+  useEffect(() => { if (voyageComplete) setAutoStep(null) }, [voyageComplete])
+
+  // 자동 항해 인터벌 (2초마다 autoStep만큼 전진)
+  useEffect(() => {
+    if (!autoStep || !totalVoyageSeconds) return
+    const id = setInterval(() => {
+      const current = scrubSecondsRef.current
+      if (current >= totalVoyageSeconds) { setAutoStep(null); return }
+      const next = Math.min(current + autoStep, totalVoyageSeconds)
+
+      lastScrubRef.current    = Date.now()
+      scrubSecondsRef.current = next
+      onScrubChange(next)
+      onElapsedChange?.(next * 1000)
+
+      if (isRunningRef.current) {
+        accumulatedMsRef.current = next * 1000
+        traveledKmRef.current    = SHIP.knots * next / 3600 * 1.852
+        if (runningStartRef.current !== null) runningStartRef.current = Date.now()
+        prevPosRef.current = null
+        setTraveledKm(traveledKmRef.current)
+        setElapsedMs(next * 1000)
+        scrubActiveRef.current = false
+      } else {
+        scrubActiveRef.current = true
+      }
+    }, 2000)
+    return () => clearInterval(id)
+  }, [autoStep, totalVoyageSeconds])
 
   // 경과 시간 타이머 (시작/중단에 따라 누적)
   useEffect(() => {
@@ -240,15 +287,28 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
               type="range"
               className={styles.scrubber}
               min={0}
-              max={totalVoyageSeconds}
-              step={60}
-              value={scrubSeconds}
+              max={Math.floor(totalVoyageSeconds / SCRUB_STEP) * SCRUB_STEP}
+              step={SCRUB_STEP}
+              value={Math.round(scrubSeconds / SCRUB_STEP) * SCRUB_STEP}
+              disabled={voyageComplete}
               onChange={e => {
-                const val = Number(e.target.value)
+                const now = Date.now()
+                if (now - lastScrubRef.current < 2000) return   // 2초 간격 제한
+                lastScrubRef.current = now
+
+                const raw        = Number(e.target.value)
+                const current    = Math.round(scrubSeconds / SCRUB_STEP) * SCRUB_STEP
+                const maxSnapped = Math.floor(totalVoyageSeconds / SCRUB_STEP) * SCRUB_STEP
+
+                // 드래그 거리와 무관하게 방향만 읽어 ±1 스텝(12시간)만 이동
+                let val
+                if (raw > current)      val = Math.min(current + SCRUB_STEP, maxSnapped)
+                else if (raw < current) val = Math.max(current - SCRUB_STEP, 0)
+                else return
+
                 onScrubChange(val)
-                onElapsedChange?.(val * 1000)   // 중단 상태에서도 EnginePanel 실시간 업데이트
+                onElapsedChange?.(val * 1000)
                 if (isRunning) {
-                  // 항해 중 탐색: 해당 위치부터 라이브 카운트 즉시 재시작
                   accumulatedMsRef.current = val * 1000
                   traveledKmRef.current    = SHIP.knots * val / 3600 * 1.852
                   if (runningStartRef.current !== null) runningStartRef.current = Date.now()
@@ -265,6 +325,25 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
               <span>출발</span>
               <span>{eta}일</span>
             </div>
+
+            {/* ── 자동 항해 버튼 ── */}
+            <div className={styles.autoStepRow}>
+              {AUTO_OPTIONS.map(({ label, secs }) => (
+                <button
+                  key={secs}
+                  className={`${styles.autoStepBtn} ${autoStep === secs ? styles.autoStepActive : ''}`}
+                  onClick={() => setAutoStep(prev => prev === secs ? null : secs)}
+                  disabled={voyageComplete}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {autoStep && (
+              <div className={styles.autoStepStatus}>
+                ▶ {AUTO_OPTIONS.find(o => o.secs === autoStep)?.label}씩 자동 항해 중
+              </div>
+            )}
           </section>
           <div className={styles.divider} />
         </>

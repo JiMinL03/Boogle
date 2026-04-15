@@ -66,7 +66,7 @@ export default function App() {
       <WeatherPanel latestWeather={latestWeather} />
 
       {leftVisible && (
-        <div className={styles.leftPanels} style={voyageComplete ? { overflow: 'hidden', pointerEvents: 'none' } : undefined}>
+        <div className={styles.leftPanels}>
           <SidePanel
             routeId={routeId}
             reversed={reversed}
@@ -74,6 +74,7 @@ export default function App() {
             shipPosition={shipPosition}
             coords={coords}
             isRunning={isRunning}
+            voyageComplete={voyageComplete}
             voyageKey={voyageKey}
             scrubSeconds={scrubSeconds}
             onScrubChange={setScrubSeconds}
@@ -95,7 +96,7 @@ export default function App() {
       </button>
 
       {rightVisible && (
-        <div className={styles.rightPanels} style={voyageComplete ? { overflowY: 'hidden' } : undefined}>
+        <div className={styles.rightPanels}>
           <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={voyageKey} shipHeading={shipPosition?.heading ?? null} reversed={reversed} />
           <BOGPanel thermalData={thermalData} sloshingData={sloshingData} onBOGChange={setBogData} elapsedMs={elapsedMs} key={voyageKey} />
         </div>
@@ -109,6 +110,14 @@ export default function App() {
       >
         {rightVisible ? '›' : '‹'}
       </button>
+
+      {coords && (
+        <div className={styles.cursorCoords}>
+          {Math.abs(coords.lat)}°{parseFloat(coords.lat) >= 0 ? 'N' : 'S'}
+          &nbsp;&nbsp;
+          {Math.abs(coords.lon)}°{parseFloat(coords.lon) >= 0 ? 'E' : 'W'}
+        </div>
+      )}
 
       {onLand && (
         <div className={styles.landWarning}>
