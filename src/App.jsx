@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react'
-import { ROUTES } from './data/routes'
 import Globe from './components/Globe'
 import ControlsHint from './components/ControlsHint'
 import SidePanel from './components/SidePanel'
@@ -30,9 +29,6 @@ export default function App() {
   const [bogData,        setBogData]        = useState(null)
   const [leftVisible,    setLeftVisible]    = useState(true)
   const [rightVisible,   setRightVisible]   = useState(true)
-  const [editMode,          setEditMode]          = useState(false)
-  const [customCoords,      setCustomCoords]      = useState(null)
-  const [isAutoNavigating,  setIsAutoNavigating]  = useState(false)
 
   useEffect(() => {
     fetch('/api/route')
@@ -44,10 +40,8 @@ export default function App() {
   }, [])
 
   const handleWeatherChange  = useCallback(setLatestWeather, [])
-  const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null); setEditMode(false); setCustomCoords(null) }, [])
-  const handleReselect       = useCallback(() => { setIsRunning(false); setVoyageComplete(false); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null); setPage('select'); setEditMode(false); setCustomCoords(null) }, [])
-  const handleRouteEdit      = useCallback(setCustomCoords, [])
-  const handleAutoStepChange = useCallback(step => setIsAutoNavigating(!!step), [])
+  const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null) }, [])
+  const handleReselect       = useCallback(() => { setIsRunning(false); setVoyageComplete(false); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null); setPage('select') }, [])
   const handleCoordsChange   = useCallback(setCoords,       [])
   const handleLandWarning    = useCallback(setOnLand,       [])
   const handleShipPosition   = useCallback(setShipPosition, [])
@@ -66,9 +60,6 @@ export default function App() {
         reversed={reversed}
         isRunning={isRunning}
         scrubSeconds={scrubSeconds}
-        editMode={editMode}
-        customCoords={customCoords}
-        onRouteEdit={handleRouteEdit}
       />
 
       <ControlsHint />
@@ -89,8 +80,6 @@ export default function App() {
             onScrubChange={setScrubSeconds}
             onElapsedChange={setElapsedMs}
             onWeatherChange={handleWeatherChange}
-            customCoords={customCoords}
-            onAutoStepChange={handleAutoStepChange}
           />
           <EnginePanel bogData={bogData} isRunning={isRunning} />
           <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
@@ -141,62 +130,8 @@ export default function App() {
           항로 재선택
         </button>
 
-        {/* ── 편집 모드 버튼 ── */}
-        {!isRunning && !isAutoNavigating && !voyageComplete && !editMode && (
-          <button
-            className={`${styles.reselectBtn} ${styles.editBtn}`}
-            onClick={() => {
-              if (!customCoords) {
-                const route = ROUTES.find(r => r.id === routeId)
-                if (route) {
-                  const coords = reversed ? [...route.coords].reverse() : route.coords
-                  setCustomCoords([...coords])
-                }
-              }
-              setEditMode(true)
-            }}
-          >
-            ✏ 항로 편집
-          </button>
-        )}
-
-        {editMode && (
-          <>
-            <span className={styles.editHint}>클릭으로 경유지 추가</span>
-            <button
-              className={`${styles.reselectBtn} ${styles.editUndoBtn}`}
-              disabled={!customCoords || customCoords.length <= (shipPosition?.wpIdx ?? 0) + 1}
-              onClick={() => {
-                const minLen = (shipPosition?.wpIdx ?? 0) + 1
-                setCustomCoords(prev => prev && prev.length > minLen ? prev.slice(0, -1) : prev)
-              }}
-            >
-              ↩ 취소
-            </button>
-            <button
-              className={`${styles.reselectBtn} ${styles.editResetBtn}`}
-              onClick={() => {
-                const route = ROUTES.find(r => r.id === routeId)
-                if (route) {
-                  const coords = reversed ? [...route.coords].reverse() : route.coords
-                  setCustomCoords([...coords])
-                }
-              }}
-            >
-              원래 항로
-            </button>
-            <button
-              className={`${styles.reselectBtn} ${styles.editDoneBtn}`}
-              onClick={() => setEditMode(false)}
-            >
-              ✓ 완료
-            </button>
-          </>
-        )}
-
         <button
           className={`${styles.runBtn} ${voyageComplete ? styles.runBtnComplete : isRunning ? styles.runBtnStop : styles.runBtnStart}`}
-          disabled={editMode}
           onClick={() => {
             if (voyageComplete) {
               alert('항해가 완료되었습니다. 항로를 재선택해 주세요.')

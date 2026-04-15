@@ -64,9 +64,9 @@ function fmtTime(d) {
 }
 
 // ────────────────────────────────────────────────────────────
-export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageComplete, voyageKey, scrubSeconds, onScrubChange, onElapsedChange, onWeatherChange, customCoords, onAutoStepChange }) {
+export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageComplete, voyageKey, scrubSeconds, onScrubChange, onElapsedChange, onWeatherChange }) {
   const route  = ROUTES.find(r => r.id === routeId)
-  const activeCoords = customCoords || route?.coords
+  const activeCoords = route?.coords
   const distKm = activeCoords ? Math.round(routeDistanceKm(activeCoords)) : null
   const distNm = distKm ? Math.round(distKm / 1.852) : null
   const eta    = distNm ? (distNm / SHIP.knots / 24).toFixed(1) : null
@@ -125,8 +125,6 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
   // 자동 항해 완료 시 중단
   useEffect(() => { if (voyageComplete) setAutoStep(null) }, [voyageComplete])
 
-  // autoStep 변경 시 부모에 알림 (항로 편집 버튼 숨기기에 활용)
-  useEffect(() => { onAutoStepChange?.(autoStep) }, [autoStep])
 
   // 자동 항해 인터벌 (2초마다 autoStep만큼 전진)
   useEffect(() => {
