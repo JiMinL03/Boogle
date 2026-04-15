@@ -114,7 +114,7 @@ function calcBearingDeg(lon1, lat1, lon2, lat2) {
 }
 
 // ── Globe 컴포넌트 ────────────────────────────────────────
-export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, onVoyageComplete, routeId, reversed, isRunning, scrubSeconds }) {
+export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, onVoyageComplete, routeId, reversed, isRunning, scrubSeconds, editMode, customCoords, onRouteEdit }) {
   const containerRef  = useRef(null)
   const mapRef        = useRef(null)
   // 자동 항행 웨이포인트 큐 (외부에서 설정 → animate 루프에서 소비)
@@ -127,6 +127,11 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, o
   const prevScrubRef    = useRef(scrubSeconds)
   const voyageCompleteFiredRef = useRef(false) // 항해 완료 콜백 중복 방지
 
+  // 편집 모드 ref
+  const editModeRef     = useRef(editMode)
+  const customCoordsRef = useRef(customCoords)
+  const onRouteEditRef  = useRef(onRouteEdit)
+
   // 콜백 ref (map.on('load') 내부 클로저에서 최신 함수 참조 유지)
   const coordsCbRef        = useRef(onCoordsChange)
   const landWarnCbRef      = useRef(onLandWarning)
@@ -138,6 +143,50 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, o
   useEffect(() => { voyageCompleteCbRef.current = onVoyageComplete }, [onVoyageComplete])
   useEffect(() => { isRunningRef.current    = isRunning     }, [isRunning])
   useEffect(() => { scrubSecondsRef.current = scrubSeconds  }, [scrubSeconds])
+  useEffect(() => { editModeRef.current     = editMode      }, [editMode])
+  useEffect(() => { customCoordsRef.current = customCoords  }, [customCoords])
+  useEffect(() => { onRouteEditRef.current  = onRouteEdit   }, [onRouteEdit])
+
+  // 편집 모드 커서 변경
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    map.getCanvas().style.cursor = editMode ? 'crosshair' : ''
+  }, [editMode])
+
+  // customCoords 변경 → 지도 항로 소스 + 선박 경로 갱신
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map?.isStyleLoaded()) return
+    const rid = routeIdRef.current
+    if (!rid) return
+
+    if (customCoords && customCoords.length >= 2) {
+      map.getSource(`route-${rid}`)?.setData({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: customCoords },
+        properties: {},
+      })
+      const wps = customCoords.map(([lon, lat]) => ({ lon, lat }))
+      if (autoRouteRef.current) {
+        autoRouteRef.current = { waypoints: wps, wpIdx: 0 }
+      }
+    } else if (customCoords === null) {
+      // 원래 항로로 복원
+      const route = ROUTES.find(r => r.id === rid)
+      if (route) {
+        const coords = reversedRef.current ? [...route.coords].reverse() : route.coords
+        map.getSource(`route-${rid}`)?.setData({
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: coords },
+          properties: {},
+        })
+        const wps = coords.map(([lon, lat]) => ({ lon, lat }))
+        autoRouteRef.current = { waypoints: wps, wpIdx: 0 }
+        shipResetRef.current = { lon: wps[0].lon, lat: wps[0].lat }
+      }
+    }
+  }, [customCoords])
 
   // routeId 또는 reversed 변경 → 자동 항행 설정 + 선박 위치 초기화 + 해당 항로 레이어 표시
   useEffect(() => {
@@ -422,6 +471,21 @@ export default function Globe({ onCoordsChange, onLandWarning, onShipPosition, o
           target.lon = ship.lon
           target.lat = ship.lat
         }
+      })
+
+      // ── 편집 모드: 지도 클릭 → 경유지 추가 ──────────────
+      map.on('click', e => {
+        if (!editModeRef.current) return
+        const { lng, lat } = e.lngLat
+        const current = customCoordsRef.current || []
+        // 직전 점과 너무 가까우면 무시 (더블클릭 방지)
+        if (current.length > 0) {
+          const prev = current[current.length - 1]
+          const dlng = lng - prev[0], dlat = lat - prev[1]
+          if (Math.sqrt(dlng * dlng + dlat * dlat) < 0.01) return
+        }
+        const newCoords = [...current, [lng, lat]]
+        onRouteEditRef.current?.(newCoords)
       })
 
       // ── 마우스 이동: 육지 감지 + 선박 목표 갱신 ─────────

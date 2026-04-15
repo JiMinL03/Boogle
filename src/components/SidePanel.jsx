@@ -64,9 +64,10 @@ function fmtTime(d) {
 }
 
 // ────────────────────────────────────────────────────────────
-export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageComplete, voyageKey, scrubSeconds, onScrubChange, onElapsedChange, onWeatherChange }) {
+export default function SidePanel({ routeId, reversed, koreanPort, shipPosition, isRunning, voyageComplete, voyageKey, scrubSeconds, onScrubChange, onElapsedChange, onWeatherChange, customCoords }) {
   const route  = ROUTES.find(r => r.id === routeId)
-  const distKm = route ? Math.round(routeDistanceKm(route.coords)) : null
+  const activeCoords = customCoords || route?.coords
+  const distKm = activeCoords ? Math.round(routeDistanceKm(activeCoords)) : null
   const distNm = distKm ? Math.round(distKm / 1.852) : null
   const eta    = distNm ? (distNm / SHIP.knots / 24).toFixed(1) : null
   const totalVoyageSeconds = distNm ? Math.round(distNm / SHIP.knots * 3600) : 0
