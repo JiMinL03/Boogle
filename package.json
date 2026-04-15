@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "start": "node server.js",
     "dev": "concurrently \"node server.js\" \"vite\"",
     "dev:client": "vite",
     "dev:server": "node server.js",
@@ -12,6 +13,7 @@
   },
   "dependencies": {
     "concurrently": "^9.2.1",
+    "cors": "^2.8.6",
     "d3-geo": "^3.1.1",
     "express": "^5.2.1",
     "mapbox-gl": "^3.21.0",

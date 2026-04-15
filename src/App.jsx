@@ -31,7 +31,8 @@ export default function App() {
   const [rightVisible,   setRightVisible]   = useState(true)
 
   useEffect(() => {
-    fetch('/api/route')
+    const base = import.meta.env.VITE_API_URL ?? ''
+    fetch(`${base}/api/route`)
       .then(r => r.json())
       .then(({ routeId }) => {
         if (routeId) { setRouteId(routeId); setPage('map') }

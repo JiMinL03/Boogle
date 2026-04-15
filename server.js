@@ -1,7 +1,13 @@
 import express from 'express'
+import cors    from 'cors'
 
 const app  = express()
-const PORT = 3001
+const PORT = process.env.PORT || 3001
+
+// CORS: Vercel 프론트엔드 허용
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+}))
 
 // Express 5에서도 안전하게 raw body 파싱
 app.use(express.json({ strict: false }))

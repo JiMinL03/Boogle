@@ -68,7 +68,8 @@ export default function RouteSelect({ onConfirm }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/route', {
+      const base = import.meta.env.VITE_API_URL ?? ''
+      const res = await fetch(`${base}/api/route`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ routeId: selected }),
