@@ -8,8 +8,8 @@
     "dev": "concurrently \"node server.js\" \"vite\"",
     "dev:client": "vite",
     "dev:server": "node server.js",
-    "build": "npx vite build",
-    "preview": "npx vite preview"
+    "build": "node node_modules/vite/bin/vite.js build",
+    "preview": "node node_modules/vite/bin/vite.js preview"
   },
   "dependencies": {
     "concurrently": "^9.2.1",
