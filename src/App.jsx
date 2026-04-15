@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import Globe from './components/Globe'
 import ControlsHint from './components/ControlsHint'
 import SidePanel from './components/SidePanel'
@@ -30,17 +30,7 @@ export default function App() {
   const [leftVisible,    setLeftVisible]    = useState(true)
   const [rightVisible,   setRightVisible]   = useState(true)
 
-  useEffect(() => {
-    const base = import.meta.env.VITE_API_URL ?? ''
-    fetch(`${base}/api/route`)
-      .then(r => r.json())
-      .then(({ routeId }) => {
-        if (routeId) { setRouteId(routeId); setPage('map') }
-      })
-      .catch(() => {})
-  }, [])
-
-  const handleWeatherChange  = useCallback(setLatestWeather, [])
+const handleWeatherChange  = useCallback(setLatestWeather, [])
   const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null) }, [])
   const handleReselect       = useCallback(() => { setIsRunning(false); setVoyageComplete(false); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null); setPage('select') }, [])
   const handleCoordsChange   = useCallback(setCoords,       [])
