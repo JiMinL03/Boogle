@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Globe from './components/Globe'
 import ControlsHint from './components/ControlsHint'
 import SidePanel from './components/SidePanel'
@@ -9,6 +10,8 @@ import BOGPanel from './components/BOGPanel'
 import WeatherPanel from './components/WeatherPanel'
 import RouteSelect from './pages/RouteSelect'
 import styles from './App.module.css'
+
+const NOOP = () => {}
 
 export default function App() {
   const [page,         setPage]         = useState('select')
@@ -29,6 +32,12 @@ export default function App() {
   const [bogData,        setBogData]        = useState(null)
   const [leftVisible,    setLeftVisible]    = useState(true)
   const [rightVisible,   setRightVisible]   = useState(true)
+  const [expandedPanel,  setExpandedPanel]  = useState(null)
+
+  const openPanel = useCallback((name) => (e) => {
+    if (e.target.closest('button, input, select, a, [role="button"]')) return
+    setExpandedPanel(name)
+  }, [])
 
 const handleWeatherChange  = useCallback(setLatestWeather, [])
   const handleConfirm        = useCallback(({ routeId: id, reversed: rev, koreanPort: kp }) => { setRouteId(id); setReversed(rev); setKoreanPort(kp); setPage('map'); setIsRunning(false); setVoyageComplete(false); setVoyageKey(k => k + 1); setScrubSeconds(0); setElapsedMs(0); setLatestWeather(null); setThermalData(null); setSloshingData(null); setBogData(null) }, [])
@@ -58,22 +67,28 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
 
       {leftVisible && (
         <div className={styles.leftPanels}>
-          <SidePanel
-            routeId={routeId}
-            reversed={reversed}
-            koreanPort={koreanPort}
-            shipPosition={shipPosition}
-            coords={coords}
-            isRunning={isRunning}
-            voyageComplete={voyageComplete}
-            voyageKey={voyageKey}
-            scrubSeconds={scrubSeconds}
-            onScrubChange={setScrubSeconds}
-            onElapsedChange={setElapsedMs}
-            onWeatherChange={handleWeatherChange}
-          />
-          <EnginePanel bogData={bogData} isRunning={isRunning} />
-          <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
+          <div className={styles.panelClickWrapper} onClick={openPanel('side')}>
+            <SidePanel
+              routeId={routeId}
+              reversed={reversed}
+              koreanPort={koreanPort}
+              shipPosition={shipPosition}
+              coords={coords}
+              isRunning={isRunning}
+              voyageComplete={voyageComplete}
+              voyageKey={voyageKey}
+              scrubSeconds={scrubSeconds}
+              onScrubChange={setScrubSeconds}
+              onElapsedChange={setElapsedMs}
+              onWeatherChange={handleWeatherChange}
+            />
+          </div>
+          <div className={styles.panelClickWrapper} onClick={openPanel('engine')}>
+            <EnginePanel bogData={bogData} isRunning={isRunning} />
+          </div>
+          <div className={styles.panelClickWrapper} onClick={openPanel('thermal')}>
+            <ThermalPanel weather={latestWeather} onThermalChange={setThermalData} />
+          </div>
         </div>
       )}
 
@@ -88,9 +103,52 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
 
       {rightVisible && (
         <div className={styles.rightPanels}>
-          <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={`sloshing-${voyageKey}`} shipHeading={shipPosition?.heading ?? null} reversed={reversed} />
-          <BOGPanel thermalData={thermalData} sloshingData={sloshingData} onBOGChange={setBogData} elapsedMs={elapsedMs} key={`bog-${voyageKey}`} />
+          <div className={styles.panelClickWrapper} onClick={openPanel('sloshing')}>
+            <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={`sloshing-${voyageKey}`} shipHeading={shipPosition?.heading ?? null} reversed={reversed} />
+          </div>
+          <div className={styles.panelClickWrapper} onClick={openPanel('bog')}>
+            <BOGPanel thermalData={thermalData} sloshingData={sloshingData} onBOGChange={setBogData} elapsedMs={elapsedMs} key={`bog-${voyageKey}`} />
+          </div>
         </div>
+      )}
+
+      {expandedPanel && createPortal(
+        <div className={styles.panelBackdrop} onClick={() => setExpandedPanel(null)}>
+          <div className={styles.panelExpandModal} onClick={e => e.stopPropagation()}>
+            <button className={styles.panelExpandClose} onClick={() => setExpandedPanel(null)}>✕</button>
+            <div className={styles.panelExpandContent}>
+              {expandedPanel === 'side' && (
+                <SidePanel
+                  routeId={routeId} reversed={reversed} koreanPort={koreanPort}
+                  shipPosition={shipPosition} coords={coords}
+                  isRunning={isRunning} voyageComplete={voyageComplete}
+                  voyageKey={voyageKey} scrubSeconds={scrubSeconds}
+                  onScrubChange={NOOP} onElapsedChange={NOOP} onWeatherChange={NOOP}
+                />
+              )}
+              {expandedPanel === 'engine' && (
+                <EnginePanel bogData={bogData} isRunning={isRunning} />
+              )}
+              {expandedPanel === 'thermal' && (
+                <ThermalPanel weather={latestWeather} onThermalChange={NOOP} />
+              )}
+              {expandedPanel === 'sloshing' && (
+                <SloshingPanel
+                  weather={latestWeather} onSloshingChange={NOOP}
+                  bogData={bogData} elapsedMs={0}
+                  shipHeading={shipPosition?.heading ?? null} reversed={reversed}
+                />
+              )}
+              {expandedPanel === 'bog' && (
+                <BOGPanel
+                  thermalData={thermalData} sloshingData={sloshingData}
+                  onBOGChange={NOOP} elapsedMs={0}
+                />
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       <button

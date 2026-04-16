@@ -408,7 +408,7 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
           const ticks = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
           return (
             <div className={styles.spectrumWrap}
-                 onClick={() => setModalOpen(true)}
+                 onClick={(e) => { e.stopPropagation(); setModalOpen(true) }}
                  title="클릭하면 파도 방향별 영향을 자세히 볼 수 있습니다"
                  style={{ cursor: 'pointer' }}>
 

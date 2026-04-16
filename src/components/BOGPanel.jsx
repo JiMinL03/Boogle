@@ -263,7 +263,7 @@ export default function BOGPanel({ thermalData, sloshingData, onBOGChange, elaps
         <div className={styles.grid}>
           <Cell label="열 유입량"       val={Q_thermal_kW.toFixed(1)} unit="kW" />
           <Cell label="슬로싱 열량"     val={Q_kinetic_kW.toFixed(1)} unit="kW" accent
-                onClick={() => setModalOpen(true)} clickable />
+                onClick={(e) => { e.stopPropagation(); setModalOpen(true) }} clickable />
           <Cell label="총 열 유입"      val={current.Q_total}          unit="kW" />
           <Cell label="기화 잠열"       val={current.dH}               unit="kJ/kg" />
           <Cell label="탱크 압력"       val={`+${P_GAUGE_KPA}`}        unit="kPa" />

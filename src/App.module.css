@@ -204,6 +204,90 @@
 }
 
 
+/* ── 패널 클릭 확대 ──────────────────────────────────────── */
+.panelClickWrapper {
+  position: relative;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.panelClickWrapper::after {
+  content: '⤢';
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0);
+  transition: color 0.2s;
+  z-index: 5;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.panelClickWrapper:hover::after {
+  color: rgba(180, 220, 255, 0.45);
+}
+
+.panelBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 18, 0.72);
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panelExpandModal {
+  position: relative;
+}
+
+.panelExpandContent {
+  zoom: 1.45;
+  max-height: calc(86vh / 1.45);
+  overflow-y: auto;
+  border-radius: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.18) transparent;
+}
+
+.panelExpandContent::-webkit-scrollbar {
+  width: 4px;
+}
+.panelExpandContent::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.18);
+  border-radius: 2px;
+}
+
+.panelExpandClose {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  z-index: 10;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: background 0.18s, color 0.18s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.panelExpandClose:hover {
+  background: rgba(255, 255, 255, 0.20);
+  color: #ffffff;
+}
+
 /* ── 마우스 커서 위도·경도 오버레이 ─────────────────────── */
 .cursorCoords {
   position: fixed;
