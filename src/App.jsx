@@ -28,6 +28,7 @@ const SECTION_STYLE   = { padding: '13px 16px' }
 const LABEL_STYLE     = { fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ff5900', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }
 const SUBLABEL_STYLE  = { fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginTop: '10px', marginBottom: '6px' }
 const DIVIDER_STYLE   = { height: '1px', background: 'rgba(255,255,255,0.08)', margin: '10px 0' }
+const GRID2_STYLE     = { display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '5px', marginBottom: '8px' }
 const GRID3_STYLE     = { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '5px' }
 const CELL_STYLE      = { background: 'linear-gradient(135deg,rgba(255,255,255,0.08) 0%,rgba(255,255,255,0.03) 100%)', border: '1px solid rgba(255,255,255,0.11)', borderRadius: '10px', padding: '7px 9px', display: 'flex', flexDirection: 'column', gap: '3px', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25),inset 0 -1px 0 rgba(255,255,255,0.03)' }
 const CELL_LBL_STYLE  = { fontSize: '11px', fontWeight: 600, letterSpacing: '0.03em', color: 'rgb(182,182,182)' }
@@ -56,18 +57,21 @@ function WeatherMini({ w }) {
           기상 데이터
           <span style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'none', letterSpacing: 0 }}>{w.time}</span>
         </div>
-        <div style={SUBLABEL_STYLE}>대기 · 해양</div>
-        <div style={GRID3_STYLE}>
-          <WCell label="외기온도" val={w.temp}      unit="°C"  />
-          <WCell label="해수온도" val={w.seaTemp}   unit="°C"  />
-          <WCell label="풍속"     val={w.windSpeed} unit="m/s" />
-          <WCell label="돌풍"     val={w.windGust ?? '--'} unit={w.windGust != null ? 'm/s' : ''} />
+        <div style={SUBLABEL_STYLE}>온도</div>
+        <div style={GRID2_STYLE}>
+          <WCell label="외기온도" val={w.temp}    unit="°C" />
+          <WCell label="해수온도" val={w.seaTemp} unit="°C" />
+        </div>
+        <div style={SUBLABEL_STYLE}>바람</div>
+        <div style={GRID2_STYLE}>
+          <WCell label="풍속" val={w.windSpeed}          unit="m/s" />
+          <WCell label="돌풍" val={w.windGust ?? '--'}   unit={w.windGust != null ? 'm/s' : ''} />
         </div>
         <div style={DIVIDER_STYLE} />
         <div style={SUBLABEL_STYLE}>방향</div>
         <div style={GRID3_STYLE}>
-          <WCell label="풍향" val={w.windDir}    unit="" />
-          <WCell label="파향" val={w.waveDir ?? '--'} unit="" />
+          <WCell label="풍향" val={w.windDir}           unit="" />
+          <WCell label="파향" val={w.waveDir    ?? '--'} unit="" />
           <WCell label="유향" val={w.currentDir ?? '--'} unit="" />
         </div>
       </div>
