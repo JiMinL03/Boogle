@@ -124,8 +124,6 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
         scrubSeconds={scrubSeconds}
       />
 
-<WeatherPanel latestWeather={latestWeather} />
-
       {leftVisible && (
         <div className={styles.leftPanels}>
           <div className={`${styles.panelClickWrapper} ${styles.panelNoExpand}`}>
@@ -143,6 +141,9 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
               onElapsedChange={setElapsedMs}
               onWeatherChange={handleWeatherChange}
             />
+          </div>
+          <div className={`${styles.panelClickWrapper} ${styles.panelNoExpand}`}>
+            <WeatherPanel latestWeather={latestWeather} />
           </div>
           <div className={styles.panelClickWrapper} onClick={openPanel('engine')}>
             <EnginePanel bogData={bogData} isRunning={isRunning} />
