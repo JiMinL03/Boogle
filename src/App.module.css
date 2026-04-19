@@ -228,6 +228,13 @@
   color: rgba(180, 220, 255, 0.45);
 }
 
+.panelNoExpand {
+  cursor: default;
+}
+.panelNoExpand::after {
+  display: none;
+}
+
 .panelBackdrop {
   position: fixed;
   inset: 0;

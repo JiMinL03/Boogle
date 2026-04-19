@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Globe from './components/Globe'
-import ControlsHint from './components/ControlsHint'
 import SidePanel from './components/SidePanel'
 import EnginePanel from './components/EnginePanel'
 import ThermalPanel from './components/ThermalPanel'
@@ -125,12 +124,11 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
         scrubSeconds={scrubSeconds}
       />
 
-      <ControlsHint />
-      <WeatherPanel latestWeather={latestWeather} />
+<WeatherPanel latestWeather={latestWeather} />
 
       {leftVisible && (
         <div className={styles.leftPanels}>
-          <div className={styles.panelClickWrapper} onClick={openPanel('side')}>
+          <div className={`${styles.panelClickWrapper} ${styles.panelNoExpand}`}>
             <SidePanel
               routeId={routeId}
               reversed={reversed}
@@ -169,7 +167,7 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
           <div className={styles.panelClickWrapper} onClick={openPanel('sloshing')}>
             <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={`sloshing-${voyageKey}`} shipHeading={shipPosition?.heading ?? null} reversed={reversed} />
           </div>
-          <div className={styles.panelClickWrapper}>
+          <div className={`${styles.panelClickWrapper} ${styles.panelNoExpand}`}>
             <BOGPanel thermalData={thermalData} sloshingData={sloshingData} onBOGChange={setBogData} elapsedMs={elapsedMs} key={`bog-${voyageKey}`} />
           </div>
         </div>
@@ -186,16 +184,7 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
                 className={styles.panelExpandContent}
                 style={expandedPanel === 'sloshing' ? { zoom: 1.2, maxHeight: 'calc(86vh / 1.2)' } : undefined}
               >
-                {expandedPanel === 'side' && (
-                  <SidePanel
-                    routeId={routeId} reversed={reversed} koreanPort={koreanPort}
-                    shipPosition={shipPosition} coords={coords}
-                    isRunning={isRunning} voyageComplete={voyageComplete}
-                    voyageKey={voyageKey} scrubSeconds={scrubSeconds}
-                    onScrubChange={NOOP} onElapsedChange={NOOP} onWeatherChange={NOOP}
-                  />
-                )}
-                {expandedPanel === 'engine' && (
+{expandedPanel === 'engine' && (
                   <EnginePanel bogData={bogData} isRunning={isRunning} />
                 )}
                 {expandedPanel === 'thermal' && (
