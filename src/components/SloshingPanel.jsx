@@ -397,8 +397,14 @@ export default function SloshingPanel({ weather, onSloshingChange, bogData, elap
                   val={wsData.Ws > WS_CAP ? `>${WS_CAP}` : wsData.Ws}
                   unit=""
                   color={wsData.Ws > 3 ? '#ff3300' : wsData.Ws > 1.5 ? '#ff9800' : '#4caf7d'}
-                  sub={`증폭 ${wsData.daf} × 방향 ${wsData.sinChi}`}
-                  wide />
+                  sub={`증폭 ${wsData.daf} × 방향 ${wsData.sinChi}`} />
+          )}
+          {wsData != null && (
+            <Cell label="슬로싱 강도"
+                  val={s.intensity.toFixed(4)}
+                  unit=""
+                  color={s.intensity >= 0.70 ? '#ff3300' : s.intensity >= 0.40 ? '#ff9800' : s.intensity >= 0.15 ? '#ffcc44' : '#4caf7d'}
+                  sub={s.risk} />
           )}
         </div>
 

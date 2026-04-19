@@ -122,13 +122,20 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
     prevPosRef.current       = null
   }, [voyageKey])
 
-  // 자동 항해 완료 시 중단
+  // 자동 항해 완료 또는 실시간 항해 시작 시 중단
   useEffect(() => { if (voyageComplete) setAutoStep(null) }, [voyageComplete])
+  useEffect(() => { if (isRunning) setAutoStep(null) }, [isRunning])
 
 
   // 자동 항해 인터벌 (2초마다 autoStep만큼 전진)
   useEffect(() => {
     if (!autoStep || !totalVoyageSeconds) return
+    // 실시간 항해로 누적된 시간이 scrub 위치보다 앞서 있으면 동기화
+    const accSecs = Math.floor(accumulatedMsRef.current / 1000)
+    if (accSecs > scrubSecondsRef.current) {
+      scrubSecondsRef.current = accSecs
+      onScrubChange(accSecs)
+    }
     const id = setInterval(() => {
       const current = scrubSecondsRef.current
       if (current >= totalVoyageSeconds) { setAutoStep(null); return }
@@ -292,7 +299,7 @@ export default function SidePanel({ routeId, reversed, koreanPort, shipPosition,
                   key={secs}
                   className={`${styles.autoStepBtn} ${autoStep === secs ? styles.autoStepActive : ''}`}
                   onClick={() => setAutoStep(prev => prev === secs ? null : secs)}
-                  disabled={voyageComplete}
+                  disabled={isRunning || voyageComplete}
                 >
                   {label}
                 </button>

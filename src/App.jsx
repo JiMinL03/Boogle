@@ -62,6 +62,7 @@ function WeatherMini({ w }) {
           <WCell label="외기온도" val={w.temp}      unit="°C"  />
           <WCell label="해수온도" val={w.seaTemp}   unit="°C"  />
           <WCell label="풍속"     val={w.windSpeed} unit="m/s" />
+          <WCell label="돌풍"     val={w.windGust ?? '--'} unit={w.windGust != null ? 'm/s' : ''} />
         </div>
         <div style={DIVIDER_STYLE} />
         <div style={SUBLABEL_STYLE}>방향</div>
@@ -168,7 +169,7 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
           <div className={styles.panelClickWrapper} onClick={openPanel('sloshing')}>
             <SloshingPanel weather={latestWeather} onSloshingChange={setSloshingData} bogData={bogData} elapsedMs={elapsedMs} key={`sloshing-${voyageKey}`} shipHeading={shipPosition?.heading ?? null} reversed={reversed} />
           </div>
-          <div className={styles.panelClickWrapper} onClick={openPanel('bog')}>
+          <div className={styles.panelClickWrapper}>
             <BOGPanel thermalData={thermalData} sloshingData={sloshingData} onBOGChange={setBogData} elapsedMs={elapsedMs} key={`bog-${voyageKey}`} />
           </div>
         </div>
@@ -205,12 +206,6 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
                     weather={latestWeather} onSloshingChange={NOOP}
                     bogData={bogData} elapsedMs={0}
                     shipHeading={shipPosition?.heading ?? null} reversed={reversed}
-                  />
-                )}
-                {expandedPanel === 'bog' && (
-                  <BOGPanel
-                    thermalData={thermalData} sloshingData={sloshingData}
-                    onBOGChange={NOOP} elapsedMs={0}
                   />
                 )}
               </div>
