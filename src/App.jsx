@@ -7,6 +7,7 @@ import ThermalPanel from './components/ThermalPanel'
 import SloshingPanel from './components/SloshingPanel'
 import BOGPanel from './components/BOGPanel'
 import WeatherPanel from './components/WeatherPanel'
+import ControlsHint from './components/ControlsHint'
 import RouteSelect from './pages/RouteSelect'
 import styles from './App.module.css'
 
@@ -128,6 +129,9 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
         scrubSeconds={scrubSeconds}
       />
 
+      <ControlsHint />
+      <WeatherPanel latestWeather={latestWeather} />
+
       {leftVisible && (
         <div className={styles.leftPanels}>
           <div className={`${styles.panelClickWrapper} ${styles.panelNoExpand}`}>
@@ -145,9 +149,6 @@ const handleWeatherChange  = useCallback(setLatestWeather, [])
               onElapsedChange={setElapsedMs}
               onWeatherChange={handleWeatherChange}
             />
-          </div>
-          <div className={`${styles.panelClickWrapper} ${styles.panelNoExpand}`}>
-            <WeatherPanel latestWeather={latestWeather} />
           </div>
           <div className={styles.panelClickWrapper} onClick={openPanel('engine')}>
             <EnginePanel bogData={bogData} isRunning={isRunning} />
